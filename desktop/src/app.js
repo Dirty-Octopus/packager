@@ -1,10 +1,12 @@
-import { t, prefs, page, sound } from "@aym-devkit/ui/shell";
+import { t, prefs, page, sound, drawMarks } from "@aym-devkit/ui/shell";
+import brand from "../../Resources/BrandMark.json";
 import "./app.css";
+drawMarks(brand.rows);
 
 const $ = (selector) => document.querySelector(selector);
 const api = window.packager;
 const projects = new Map();
-let selectedId = null, outputDirectory = "", activeTab = "structure", version = "1.1.0";
+let selectedId = null, outputDirectory = "", activeTab = "structure", version = "";
 const selected = () => projects.get(selectedId);
 const escape = (value = "") => String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const size = (bytes) => bytes ? bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.ceil(bytes / 1024)} KB` : "—";
@@ -216,7 +218,7 @@ api?.onMenu((action) => {
   if (action === "settings" && $("#welcome").hidden) $("#system-open").click();
 });
 if (api) {
-  api.info().then((info) => { version = info.version; outputDirectory = info.outputDirectory; document.querySelectorAll(".version-label").forEach((el) => { el.textContent = version; }); render(); }).catch(showError);
+  api.info().then((info) => { version = info.version; outputDirectory = info.outputDirectory; document.querySelectorAll("[data-app-version]").forEach((el) => { el.textContent = version; }); render(); }).catch(showError);
 } else {
   $("#error").hidden = false; $("#error").textContent = "Desktop bridge unavailable. Open Packager.app / 请打开 Packager.app";
 }

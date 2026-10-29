@@ -1,7 +1,7 @@
 {
   "name": "packager-desktop",
   "productName": "Packager",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "main": "electron.cjs",
@@ -62,8 +62,8 @@
       "identity": null,
       "minimumSystemVersion": "14.0",
       "extendInfo": {
-        "CFBundleShortVersionString": "1.1.0",
-        "CFBundleVersion": "3"
+        "CFBundleShortVersionString": "1.1.1",
+        "CFBundleVersion": "4"
       }
     },
     "electronDist": "node_modules/electron/dist"

@@ -200,10 +200,8 @@ const colors = {
   other: "#F22A30",
 };
 // A true 16 x 16 binary white foreground, enlarged only by nearest-neighbor sampling.
-const rows = [
-  0, 0, 0, 0x1ff0, 0x1018, 0x1018, 0x1018, 0x1ff0, 0x1000, 0x1000, 0x1000, 0x1000, 0x1000, 0, 0, 0,
-];
-$$(".pixel-logo").forEach((canvas) => {
+function drawMarks(rows) {
+  $$(".pixel-logo").forEach((canvas) => {
   const c = canvas.getContext("2d");
   c.fillStyle = colors[canvas.dataset.category];
   c.fillRect(0, 0, 16, 16);
@@ -213,8 +211,13 @@ $$(".pixel-logo").forEach((canvas) => {
     for (let x = 0; x < 16; x++)
       if (row & (1 << (15 - x))) c.fillRect(x, y, 1, 1);
   });
-});
+  });
+}
+drawMarks([
+  0, 0, 0, 0, 0x7824, 0x4428, 0x4430, 0x4420, 0x4430, 0x4428, 0x7824, 0, 0, 0, 0, 0,
+]);
 const welcome = initWelcome({
+  automatic: true,
   motionAllowed,
   onStart: (finishWelcome) => {
     const site = $("#site"),
@@ -262,12 +265,12 @@ const welcome = initWelcome({
     $("#main").focus({ preventScroll: true });
   },
 });
-$("#replay").onclick = welcome.show;
-$("#replay-panel").onclick = welcome.show;
+$("#replay").onclick = () => welcome.show({ automatic: false });
+$("#replay-panel").onclick = () => welcome.show({ automatic: false });
 window.addEventListener("error", (e) => {
   const box = $("#error");
   box.hidden = false;
   box.textContent = e.message;
 });
 
-export { t, prefs, sound, sync, page };
+export { t, prefs, sound, sync, page, drawMarks };

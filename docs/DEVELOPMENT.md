@@ -71,7 +71,7 @@ Automated coverage:
   translation decisions, incomplete scans, JavaScript/XML removal, mixed-check
   preservation and warning, size repair, version resource and unique output names.
 - 3 Node tests: actual helper errors, process-group cancellation, and verification that cancelling a real Swift worker leaves no running pkgutil child.
-- 5 Electron tests against the packaged app: default Quick mode and failure/recommendation copy, real repair
+- 6 Electron tests against the packaged app: default Quick mode and failure/recommendation copy, real repair
   through IPC, Full mode/search/text preview/options, fixed/legacy fixtures,
   architecture verdicts, in-window settings, language/appearance and physical
   pointer mapping with CRT enabled.
@@ -84,3 +84,29 @@ load commands. Intel-target app packaging is available but not exercised here.
 Generated artifacts, package samples, session workspaces and dependency caches
 are ignored. AYMDevKitUI's MIT notice and both font OFL notices are included in the
 built application. Local signing is ad-hoc without notarization.
+
+
+## 1.1.1 interface correction
+
+The utility classification controls the blue application mark. The original kit
+palette is retained: yellow highlights, blue primary actions, and red/yellow/blue
+strata. Packager no longer overrides the interface accent or forces highlighted
+control text to white. The kit's palette CSS and source assembly engine are unchanged.
+
+The startup timeline now targets the real `.workspace` content and `.board-notice`;
+the start control has one correct combined class attribute. Startup enters this
+2.5-second wipe/morph timeline automatically. Reduced Motion or disabled interface
+motion bypasses the animation and releases the interface immediately. Welcome can
+still be replayed from About.
+
+The mark follows Seal's current `1bb319b` implementation: 1024 px master, blue
+rounded tile inset by 80 px, a 16 × 16 grid with 48 px cells starting at 128 px,
+and a 480 × 480 px white foreground with two-cell strokes. The JSON mark resource
+is shared by the Swift icon renderer and the in-app canvas, preventing divergence.
+The macOS icon has transparent outer margins rather than relying on a system mask.
+
+Verification includes the actual production startup's sampled transformation
+matrices and content clip paths, reduced-motion entry, and the existing package
+workflow. The icon foreground bounds match Seal's `(272, 272, 752, 752)` at 1024 px.
+GUI validation uses an isolated temporary Electron profile, separate from actual
+application appearance and language preferences.

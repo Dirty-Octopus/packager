@@ -4,13 +4,13 @@
 
 [English](README.md) · 简体中文 · MIT
 
-当前源码版本为 **1.1.0**。界面使用 [AYMDevKitUI](https://github.com/Dirty-Octopus/AYMDevKitUI) 当前的 Electron 实现，类别为通用工具蓝色 `#164BFF`；安装包处理由独立 Swift 辅助程序完成。全部字体、界面音效和资产随 App 打包。
+当前源码版本为 **1.1.1**。界面使用 [AYMDevKitUI](https://github.com/Dirty-Octopus/AYMDevKitUI) 当前的 Electron 实现，图标类别为通用工具蓝色 `#164BFF`，界面沿用库自身的配色；安装包处理由独立 Swift 辅助程序完成。全部字体、界面音效和资产随 App 打包。
 
 ![快速模式](docs/quick-mode.png)
 
 ## 快速模式
 
-主界面默认打开快速模式。导入安装包后，点击「一键尝试转换」：
+启动时自动播放库原生的 2.5 秒构造入场，包含面板划入与非等比变形，之后进入快速模式。关闭界面动效或启用系统减少动态效果时直接进入。导入安装包后，点击「一键尝试转换」：
 
 - 尝试移除支持的系统版本限制。
 - 清除检测到的重定位标记。

@@ -10,6 +10,8 @@ Modules and styles are used directly, including CRT mapping, coordinated motion,
 settings, appearance, typography, background and interface audio.
 
 Host adaptations: main.js becomes shell.js, gallery-only handlers are removed,
-bootstrap functions are exported, the foreground mark is Packager’s pixel P, and preferences use the Packager storage key.
-Packager application markup and its blue identity overrides live outside this package.
+bootstrap functions and the generic mark painter are exported, startup can enter the source assembly automatically, and preferences use the Packager storage key.
+Packager paints its shared thick pixel P from Resources/BrandMark.json.
+Packager application markup lives outside this package and uses the kit’s original palette. Blue identifies the application mark, rather than replacing the interface accent.
+The original portal-assembly.js, motion curves, palette and CRT modules are unchanged.
 No uncommitted SwiftUI changes from the source checkout are included.

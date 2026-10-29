@@ -4,7 +4,7 @@ Electron application and isolated native bridge for Packager. Its local package
 dependency `@aym-devkit/ui` vendors the active AYMDevKitUI Electron runtime at a
 pinned revision; see `vendor/aym-devkit-ui/PROVENANCE.md` and its MIT license.
 
-- `src/app.js`, `src/app.css`, `index.html`: actual Quick/Full workbench and blue identity.
+- `src/app.js`, `src/app.css`, `index.html`: actual Quick/Full workbench using the kit palette and a blue application mark.
 - `electron.cjs`: native file dialogs, project handles, workspace lifecycle, output authorization and menu.
 - `preload.cjs`: narrow context-isolated bridge. No Node access in the renderer.
 - `backend.cjs`: line-delimited JSON transport and cancellation of the worker process group.
@@ -19,4 +19,6 @@ launches use built, local files. The Content Security Policy disallows remote
 scripts and media. There is no updater, upload endpoint or telemetry.
 
 The three optional GUI fixture paths use environment variables documented in the
-root README. The fixture packages and build/test caches stay outside Git.
+root README. The fixture packages and build/test caches stay outside Git. GUI tests use a
+separate temporary Electron user-data profile, leaving actual application
+preferences untouched.

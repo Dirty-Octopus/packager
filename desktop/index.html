@@ -72,7 +72,7 @@
             ><span>PACKAGER<small>MACOS INSTALLER WORKBENCH</small></span>
           </div>
           <div class="header-right header-tools">
-            <span class="status"><i></i> LOCAL / 1.1.0</span
+            <span class="status"><i></i> LOCAL / <span data-app-version></span></span
             ><button
               id="system-open"
               aria-label="打开设置"
@@ -115,14 +115,36 @@
               <div class="module-wipe"></div>
               <section data-view="overview">
                 <div class="hero quick-hero">
-                  <div class="hero-art" aria-hidden="true"><div class="package-diagram"><span>PKG</span><i>→</i><span>XAR</span></div></div>
+                  <div class="hero-art" aria-hidden="true">            <svg
+              class="banner-strata"
+              viewBox="0 0 1200 300"
+              preserveAspectRatio="xMidYMid slice"
+            >
+              <path class="strata-base" d="M0 0H1200V300H0Z" />
+              <g class="strata-far">
+                <path d="M520 0H1200V300H750L630 180H440L560 60Z" />
+                <path d="M810 0H880L640 300H570Z" />
+              </g>
+              <g class="strata-mid">
+                <path d="M930 0H1200V300H680L790 190H930L1050 70H860Z" />
+                <path d="M620 0H645L410 300H385Z" />
+              </g>
+              <g class="strata-front">
+                <path d="M1120 0H1200V300H940L830 190H1020L1090 120H1000Z" />
+                <path d="M770 246H975L1029 300H716Z" />
+              </g>
+              <path
+                class="strata-line"
+                d="M600 20H915L1015 120H1180M490 280H660L790 150H920M745 238H992L1034 280H1180"
+              />
+            </svg></div>
                   <p class="eyebrow">01 / QUICK MODE</p>
                   <h1 class="hero-copy" data-zh="快速转换" data-en="QUICK CONVERSION">快速转换</h1>
                   <p class="lead" data-zh="导入安装包，一键尝试重新封装。" data-en="Open an installer. Try repackaging in one step."></p>
                   <div class="actions"><button class="primary" data-action="open" data-zh="打开安装包 ↗" data-en="OPEN PACKAGE ↗"></button><button data-goto="foundations" data-zh="使用完整模式" data-en="USE FULL MODE"></button></div>
                 </div>
-                <div class="quick-body">
-                  <div class="notice" role="note"><span class="notice-label" data-zh="可能失败" data-en="MAY FAIL"></span><p data-zh="快速模式会尝试修复可识别的限制和尺寸元数据，但转换可能失败，重建成功也不保证软件能运行。推荐使用完整模式，检查问题后再选择修复。" data-en="Quick mode attempts supported limit and size repairs. Conversion can fail, and a rebuilt package may still contain incompatible software. Full mode is recommended so you can review each change."></p></div>
+                <div class="quick-body workspace">
+                  <div class="notice board-notice" role="note"><span class="notice-label" data-zh="可能失败" data-en="MAY FAIL"></span><p data-zh="快速模式会尝试修复可识别的限制和尺寸元数据，但转换可能失败，重建成功也不保证软件能运行。推荐使用完整模式，检查问题后再选择修复。" data-en="Quick mode attempts supported limit and size repairs. Conversion can fail, and a rebuilt package may still contain incompatible software. Full mode is recommended so you can review each change."></p></div>
                   <div id="quick-drop" class="drop-zone" tabindex="0" role="button" aria-label="Open or drop an installer"><span class="drop-symbol">＋</span><strong data-zh="拖入 .pkg 或 .mpkg" data-en="DROP A .PKG OR .MPKG"></strong><span data-zh="或点击选择文件" data-en="OR CLICK TO CHOOSE"></span></div>
                   <div id="quick-project" hidden></div>
                   <div class="quick-output"><span data-zh="输出目录" data-en="OUTPUT FOLDER"></span><code id="quick-output-directory"></code><button data-action="directory" data-zh="更改" data-en="CHANGE"></button></div>
@@ -159,10 +181,10 @@
                 <p class="muted" data-zh="显示当前安装包的检查、转换与验证记录。" data-en="Inspection, conversion and verification events for the selected package."></p><pre id="activity-log" class="activity-log" aria-live="polite"></pre>
               </section>
               <section data-view="panels" hidden>
-                <div class="page-heading"><div><p class="eyebrow">04 / ABOUT</p><h1>PACKAGER</h1></div><span class="version-label">1.1.0</span></div>
+                <div class="page-heading"><div><p class="eyebrow">04 / ABOUT</p><h1>PACKAGER</h1></div><span class="version-label" data-app-version></span></div>
                 <div class="panel"><h2 data-zh="本地安装包工作台" data-en="LOCAL INSTALLER WORKBENCH"></h2><p data-zh="检查旧版 macOS 安装包，按需修改后重新封装。原文件保留，安装脚本不会在检查过程中执行。" data-en="Inspect legacy macOS installers, review changes and repackage. Original files are preserved. Install scripts never run during inspection."></p></div>
                 <div class="panel"><h2 data-zh="能力与限制" data-en="CAPABILITIES & LIMITS"></h2><p data-zh="可移除支持的系统版本限制、修复尺寸、转换旧式 Bundle。无法补上 64 位代码，也无法保证旧插件在当前系统或宿主中运行。混合硬件与版本的 JavaScript 检查会保留并提示人工复核。" data-en="Removes supported OS limits, repairs size metadata and converts legacy bundles. It cannot generate 64-bit code or guarantee old plug-ins will run. Mixed hardware and version JavaScript checks remain for manual review."></p></div>
-                <div class="panel"><h2>AYMDEVKITUI / UTILITY BLUE</h2><p>AYMDevKitUI · ad8f98b · MIT</p><p data-zh="本地处理，无遥测、无上传。" data-en="Local processing. No telemetry or uploads."></p><div class="actions"><button id="replay" data-zh="查看欢迎界面" data-en="SHOW WELCOME"></button><button id="replay-panel" hidden></button></div></div>
+                <div class="panel"><h2>AYMDEVKITUI</h2><p>AYMDevKitUI · ad8f98b · MIT</p><p data-zh="本地处理，无遥测、无上传。" data-en="Local processing. No telemetry or uploads."></p><div class="actions"><button id="replay" data-zh="查看欢迎界面" data-en="SHOW WELCOME"></button><button id="replay-panel" hidden></button></div></div>
               </section>
             </div>
           </main>
@@ -183,15 +205,14 @@
               data-category="utility"
             ></canvas>
             <p class="eyebrow">LOCAL INSTALLER WORKBENCH</p>
-            <h1>PACKAGER<br /><em>1.1.0</em></h1>
+            <h1>PACKAGER<br /><em data-app-version></em></h1>
             <p
               data-zh="检查、修复并重新封装 macOS 安装包。"
               data-en="Inspect, repair and repackage macOS installers."
             ></p>
             <button
-              class="primary"
-              id="start"
               class="primary portal-controls"
+              id="start"
               data-zh="开始使用 ↗"
               data-en="GET STARTED ↗"
             ></button

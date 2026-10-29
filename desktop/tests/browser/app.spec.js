@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import { lensDisplayPoint } from "../../vendor/aym-devkit-ui/src/vendor/crt.js";
 
 test.describe.configure({ mode: "serial" });
-let app, page;
+let app, page, profile;
 const errors = [];
 const original = process.env.PACKAGER_TEST_ORIGINAL;
 const fixed = process.env.PACKAGER_TEST_FIXED;
@@ -14,25 +14,51 @@ const output = path.resolve("../.build/validation/ui-output");
 test.beforeAll(async () => {
   for (const file of [original, fixed, legacy].filter(Boolean)) await fs.stat(file);
   await fs.mkdir(output, { recursive: true });
-  app = await electron.launch({ ...(process.env.PACKAGER_TEST_APP ? { executablePath: process.env.PACKAGER_TEST_APP, args: [] } : { args: ["."] }), cwd: process.cwd(), env: { ...process.env, ELECTRON_ENABLE_LOGGING: "1" } });
+  profile = await fs.mkdtemp(path.resolve("../.build/gui-profile-"));
+  app = await electron.launch({ ...(process.env.PACKAGER_TEST_APP ? { executablePath: process.env.PACKAGER_TEST_APP, args: [] } : { args: ["."] }), cwd: process.cwd(), env: { ...process.env, ELECTRON_ENABLE_LOGGING: "1", PACKAGER_TEST_USER_DATA: profile } });
   page = await app.firstWindow();
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.waitForSelector("#start");
+  await page.waitForSelector("#start", { state: "attached" });
   // Test text and hitboxes without a lens; CRT pointer mapping has its own upstream tests.
   await page.evaluate(() => { localStorage.clear(); localStorage.setItem("aym-crt", "false"); localStorage.setItem("packager-interface", JSON.stringify({ appearance: "dark", language: "zh", motion: true, sound: true, softness: 0.2 })); });
+  await page.addInitScript(() => {
+    window.entryFrames = [];
+    let started = false;
+    function record() {
+      const site = document.querySelector("#site"), hero = document.querySelector(".hero"), workspace = document.querySelector(".quick-body.workspace");
+      if (site?.dataset.assembling === "true") {
+        started = true;
+        window.entryFrames.push({ transform: getComputedStyle(hero).transform, clip: getComputedStyle(workspace).clipPath });
+      }
+      if (!started || !document.querySelector("#welcome")?.hidden) requestAnimationFrame(record);
+    }
+    requestAnimationFrame(record);
+  });
   await page.reload();
 });
-test.afterAll(async () => { await app?.close(); });
+test.afterAll(async () => { await app?.close(); if (profile) await fs.rm(profile, { recursive: true, force: true }); });
 
 async function select(file) {
   await app.evaluate(({ dialog }, selected) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [selected] }); }, file);
   await page.locator('[data-action="open"]').first().click();
 }
 
-test("quick mode opens by default with the conversion warning", async () => {
-  await page.locator("#start").click();
+test("startup automatically morphs and wipes into Quick mode", async () => {
   await expect(page.locator("#welcome")).toBeHidden();
   await expect(page.locator("#site")).toHaveAttribute("data-view", "overview");
+  const frames = await page.evaluate(() => window.entryFrames);
+  expect(frames.length).toBeGreaterThan(5);
+  expect(frames.some((frame) => {
+    const values = frame.transform.match(/^matrix\((.*)\)$/)?.[1].split(",").map(Number);
+    return values && Math.abs(values[0] - values[3]) > 0.03;
+  })).toBeTruthy();
+  expect(frames.some((frame) => frame.clip !== "none" && frame.clip !== "inset(0px)" && frame.clip !== "inset(0px 0px 0px 0px)")).toBeTruthy();
+  const palette = await page.evaluate(() => ({
+    accent: getComputedStyle(document.querySelector(".nav.active")).backgroundColor,
+    primary: getComputedStyle(document.querySelector(".quick-hero button.primary")).backgroundColor,
+    strata: getComputedStyle(document.querySelector(".quick-hero .strata-mid")).fill,
+  }));
+  console.log("Library palette:", palette);
   await expect(page.locator(".notice")).toContainText("转换可能失败");
   await expect(page.locator(".notice")).toContainText("推荐使用完整模式");
   await expect(page.locator("#quick-convert")).toBeDisabled();
@@ -127,4 +153,21 @@ test("settings stay in the window and language, appearance and keyboard work", a
   await page.screenshot({ scale: "css", path: "../docs/quick-mode-crt.png" });
   expect(errors).toEqual([]);
   await expect(page.locator("#error")).toBeHidden();
+});
+
+
+test("reduced motion enters immediately and releases every control", async () => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.evaluate(() => localStorage.setItem("aym-crt", "false"));
+  await page.reload();
+  await expect(page.locator("#welcome")).toBeHidden();
+  await expect(page.locator("#site")).not.toHaveAttribute("data-assembling", "true");
+  await expect(page.locator("#system-open")).toBeEnabled();
+  const frames = await page.evaluate(() => window.entryFrames);
+  expect(frames.length).toBe(0);
+  await page.locator("#system-open").click();
+  await expect(page.locator("#system-dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#system-dialog")).not.toBeVisible();
+  await page.emulateMedia({ reducedMotion: "no-preference" });
 });

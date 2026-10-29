@@ -6,6 +6,7 @@ const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const { runBackend } = require("./backend.cjs");
 const execute = promisify(execFile);
+if (process.env.PACKAGER_TEST_USER_DATA) app.setPath("userData", path.resolve(process.env.PACKAGER_TEST_USER_DATA));
 let window, sessionRoot;
 const projects = new Map(), jobs = new Map();
 const queuedPaths = [];

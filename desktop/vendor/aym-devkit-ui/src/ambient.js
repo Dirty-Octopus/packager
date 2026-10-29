@@ -1,10 +1,11 @@
 // Welcome-only grid; all coordinates are already corrected by the CRT input layer.
-export function initWelcome({ motionAllowed, onFinish, onStart = () => {} }) {
+export function initWelcome({ motionAllowed, onFinish, onStart = () => {}, automatic = false }) {
   const welcome = document.querySelector("#welcome"),
     canvas = document.querySelector("#ascii"),
     ctx = canvas.getContext("2d"),
     site = document.querySelector("#site");
-  let running = false,
+  let autoTimer,
+    running = false,
     frame = 0,
     last = 0,
     trail = [],
@@ -85,7 +86,8 @@ export function initWelcome({ motionAllowed, onFinish, onStart = () => {} }) {
         ctx.fillText(char, x, y);
       }
   }
-  function show() {
+  function show({ automatic: autoEnter = automatic } = {}) {
+    clearTimeout(autoTimer);
     document.body.classList.add("boot-visible");
     trail = [];
     ripples = [];
@@ -97,10 +99,12 @@ export function initWelcome({ motionAllowed, onFinish, onStart = () => {} }) {
       frame = requestAnimationFrame(draw);
     }
     document.querySelector("#start").focus({ preventScroll: true });
+    if (autoEnter) autoTimer = setTimeout(enter, motionAllowed() ? 380 : 0);
   }
   let entering = false;
-  document.querySelector("#start").addEventListener("click", () => {
+  function enter() {
     if (entering) return;
+    clearTimeout(autoTimer);
     entering = true;
     onStart(() => {
       welcome.hidden = true;
@@ -109,7 +113,8 @@ export function initWelcome({ motionAllowed, onFinish, onStart = () => {} }) {
       entering = false;
       onFinish();
     });
-  });
+  }
+  document.querySelector("#start").addEventListener("click", enter);
   // The app is inert behind the welcome, while the welcome itself remains interactive.
   function sync() {
     for (const child of site.children)

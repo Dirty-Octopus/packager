@@ -18,7 +18,7 @@ for spec in "16 icon_16x16.png" "32 icon_16x16@2x.png" "32 icon_32x32.png" "64 i
   sips -z "${spec%% *}" "${spec%% *}" Resources/AppIcon.png --out "$ICONSET/${spec#* }" >/dev/null
 done
 iconutil -c icns "$ICONSET" -o .build/AppIcon.icns
-rm -rf "$ICONSET"
+
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" Supporting/Info.plist
 VERSION="$VERSION" node --input-type=module <<'JS'
 import fs from 'node:fs';
@@ -35,7 +35,10 @@ npm run build --prefix desktop
 case "$ARCH" in arm64) ELECTRON_ARCH=arm64; OUTPUT=mac-arm64;; x86_64|x64) ELECTRON_ARCH=x64; OUTPUT=mac;; *) echo "Unsupported ARCH: $ARCH" >&2; exit 1;; esac
 (cd desktop && npx electron-builder --mac dir --"$ELECTRON_ARCH")
 APP="$ROOT/dist/Packager.app"
-rm -rf "$APP"
+if [[ -e "$APP" ]]; then
+  mkdir -p "$ROOT/.build/previous-builds"
+  mv "$APP" "$ROOT/.build/previous-builds/Packager-$(date +%Y%m%d-%H%M%S)-$$.app"
+fi
 ditto "$ROOT/desktop/release/$OUTPUT/Packager.app" "$APP"
 codesign --force --deep --sign - "$APP"
 codesign --verify --deep --strict "$APP"

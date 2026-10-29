@@ -4,13 +4,13 @@ A local workbench for legacy macOS `.pkg` and `.mpkg` installers. Inspect their 
 
 English · [简体中文](README.zh-CN.md) · MIT
 
-The current source version is **1.1.0**. The interface uses the active Electron implementation of [AYMDevKitUI](https://github.com/Dirty-Octopus/AYMDevKitUI), with utility blue `#164BFF`. An isolated Swift helper handles installer packages. Fonts, interface audio and assets are bundled locally.
+The current source version is **1.1.1**. The interface uses the active Electron implementation of [AYMDevKitUI](https://github.com/Dirty-Octopus/AYMDevKitUI), with a utility-blue `#164BFF` application mark and the kit’s original interface palette. An isolated Swift helper handles installer packages. Fonts, interface audio and assets are bundled locally.
 
 ![Quick mode](docs/quick-mode.png)
 
 ## Quick mode
 
-The main interface opens in Quick mode. Import a package and choose **Try conversion** to apply supported OS-limit, relocation and zero-size metadata repairs, and convert supported legacy bundles into flat XAR packages. Install scripts, binaries and source packages are preserved. Existing output files are never overwritten.
+Startup automatically plays the kit’s 2.5-second assembly with panel wipes and a non-uniform morph, then opens Quick mode. Disabling interface motion or enabling system Reduce Motion enters immediately. Import a package and choose **Try conversion** to apply supported OS-limit, relocation and zero-size metadata repairs, and convert supported legacy bundles into flat XAR packages. Install scripts, binaries and source packages are preserved. Existing output files are never overwritten.
 
 **Quick conversion can fail. A verified archive does not guarantee successful installation or runtime. Full mode is recommended to review issues and choose changes explicitly.**
 

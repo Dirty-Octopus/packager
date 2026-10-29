@@ -90,7 +90,7 @@ final class RegressionTests: XCTestCase {
     }
 
     func testCLIVersionUsesTheBundledResource() {
-        XCTAssertEqual(AppVersion.current, "1.1.0")
+        XCTAssertEqual(AppVersion.current, "1.1.1")
     }
 
     func testHostCompatibilitySeparatesNativeTranslationAndLegacy() {
