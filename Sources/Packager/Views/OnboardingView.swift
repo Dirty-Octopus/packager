@@ -63,7 +63,7 @@ struct OnboardingView: View {
                 Spacer(minLength: 26)
 
                 HStack(spacing: 7) {
-                    Text("Packager 1.0")
+                    Text("Packager \(version)")
                     Text("·")
                     Link("GitHub", destination: URL(string: "https://github.com/Dirty-Octopus/packager")!)
                         .foregroundStyle(Theme.secondaryText)
@@ -77,6 +77,10 @@ struct OnboardingView: View {
             .padding(.horizontal, 34)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var version: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.1"
     }
 
     private func commit(_ language: AppLanguage) {
