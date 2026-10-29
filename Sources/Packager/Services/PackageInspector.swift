@@ -49,9 +49,10 @@ enum MachO {
         let be = beUInt32(bytes, 0)
 
         switch be {
-        case 0xCAFEBABE, 0xCAFEBABF:
-            let is64 = be == 0xCAFEBABF
-            let count = Int(beUInt32(bytes, 4))
+        case 0xCAFEBABE, 0xCAFEBABF, 0xBEBAFECA, 0xBFBAFECA:
+            let is64 = be == 0xCAFEBABF || be == 0xBFBAFECA
+            let littleEndian = be == 0xBEBAFECA || be == 0xBFBAFECA
+            let count = Int(littleEndian ? leUInt32(bytes, 4) : beUInt32(bytes, 4))
             guard count > 0, count < 64 else { return nil }
             let entrySize = is64 ? 32 : 20
             let needed = 8 + count * entrySize
@@ -63,7 +64,7 @@ enum MachO {
             var archs: [String] = []
             for index in 0..<count {
                 let offset = 8 + index * entrySize
-                let cpu = beUInt32([UInt8](data), offset)
+                let cpu = littleEndian ? leUInt32([UInt8](data), offset) : beUInt32([UInt8](data), offset)
                 if let name = cpuName(cpu), !archs.contains(name) {
                     archs.append(name)
                 }
@@ -95,12 +96,16 @@ enum MachO {
         case 0x0200000C: return "arm64_32"
         case 18: return "ppc"
         case 0x01000012: return "ppc64"
-        default: return nil
+        default: return "unknown-0x" + String(cpu, radix: 16)
         }
     }
 
     static func isLegacy(_ arch: String) -> Bool {
-        ["i386", "arm", "ppc", "arm64_32"].contains(arch)
+        ["i386", "arm", "ppc", "ppc64", "arm64_32"].contains(arch)
+    }
+
+    static func isLegacyOnly(_ archs: [String]) -> Bool {
+        !archs.isEmpty && archs.allSatisfy(isLegacy)
     }
 
     static func is32Bit(_ archs: [String]) -> Bool {
@@ -158,6 +163,7 @@ enum PackageInspector {
         var bytes: Int64 = 0
         var binaries: [BinaryInfo] = []
         var scannedFiles: Int = 0
+        var complete = true
     }
 
     private static let fm = FileManager.default
@@ -192,7 +198,7 @@ enum PackageInspector {
         if isDirectory {
             log(T("Copying bundle into the workspace"))
             do {
-                try fm.copyItem(at: source, to: repack)
+                try PackageExpansion.expand(source: source, destination: repack, log: log)
             } catch {
                 throw PackagerError.expandFailed("Could not copy the bundle into the workspace: \(error.localizedDescription)")
             }
@@ -212,7 +218,7 @@ enum PackageInspector {
         }
 
         log(T("Expanding payloads for binary inspection"))
-        let directFull = Shell.run("/usr/sbin/pkgutil", ["--expand-full", source.path, full.path])
+        let directFull = isDirectory ? CommandResult(exitCode: 1, stdout: "", stderr: "Bundle requires component expansion", duration: 0, executable: "", arguments: []) : Shell.run("/usr/sbin/pkgutil", ["--expand-full", source.path, full.path])
         fullExpanded = directFull.succeeded && fm.fileExists(atPath: full.path)
         if !fullExpanded {
             try? fm.removeItem(at: full)
@@ -229,14 +235,15 @@ enum PackageInspector {
 
         let distributionURL = repack.appendingPathComponent("Distribution")
         let distribution = fm.fileExists(atPath: distributionURL.path) ? parseDistribution(distributionURL) : nil
-        if let distribution, !distribution.constraints.isEmpty {
-            log(T("Found %d system version constraint(s)", distribution.constraints.count))
+        if let distribution, !distribution.constraints.isEmpty || distribution.javaScriptGateCount > 0 {
+            log(T("Found %d system version constraint(s)", distribution.constraints.count + distribution.javaScriptGateCount))
         }
 
         var components: [PackageComponent] = []
         var componentNodes: [PackageNode] = []
         var scripts: [ScriptInfo] = []
         var allBinaries: [BinaryInfo] = []
+        var scanComplete = fullExpanded
         var totalFiles = 0
         var totalBytes: Int64 = 0
         var bit32 = 0
@@ -252,11 +259,12 @@ enum PackageInspector {
             let payloadArchive = directory.appendingPathComponent("Payload")
             var payloadNode: PackageNode?
             if fullExpanded {
-                let payloadDir = full
-                    .appendingPathComponent(relativePath)
-                    .appendingPathComponent("Payload", isDirectory: true)
+                let nativePayload = full.appendingPathComponent(relativePath).appendingPathComponent("Payload", isDirectory: true)
+                let scriptPayload = directory.appendingPathComponent("Scripts/payload", isDirectory: true)
+                let payloadDir = isDirectoryURL(nativePayload) ? nativePayload : scriptPayload
                 if isDirectoryURL(payloadDir) {
                     let scan = scanPayload(at: payloadDir, baseRelativePath: relativePath)
+                    scanComplete = scanComplete && scan.complete
                     component.payloadFileCount = scan.fileCount
                     component.payloadBytes = scan.bytes
                     component.binaryCount = scan.binaries.count
@@ -277,6 +285,8 @@ enum PackageInspector {
                     payloadNode = tree
                 }
             }
+
+            if payloadNode == nil, component.hasPayload { scanComplete = false }
 
             if payloadNode == nil, fm.fileExists(atPath: payloadArchive.path) {
                 component.payloadArchiveKind = FileMagic.payloadKind(payloadArchive)
@@ -383,7 +393,7 @@ enum PackageInspector {
         let title = distribution?.title?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
             ?? source.deletingPathExtension().lastPathComponent
 
-        let stats = InspectionStats(
+        var stats = InspectionStats(
             components: components.count,
             payloadFiles: totalFiles,
             payloadBytes: totalBytes,
@@ -392,7 +402,7 @@ enum PackageInspector {
             scripts: scripts.count,
             highRiskScripts: scripts.filter { $0.risk == .high }.count,
             relocatableComponents: components.filter(\.relocatable).count,
-            osConstraints: distribution?.constraints.count ?? 0
+            osConstraints: (distribution?.constraints.count ?? 0) + (distribution?.javaScriptGateCount ?? 0)
         )
 
         let root = PackageNode(
@@ -406,7 +416,7 @@ enum PackageInspector {
         )
 
         let signature = signatureDescription(for: source)
-        let issues = buildIssues(
+        var issues = buildIssues(
             format: format,
             distribution: distribution,
             components: components,
@@ -414,10 +424,10 @@ enum PackageInspector {
             binaries: allBinaries,
             stats: stats,
             signature: signature,
-            payloadExpanded: fullExpanded,
+            payloadExpanded: scanComplete,
             language: .en
         )
-        let issuesZH = buildIssues(
+        var issuesZH = buildIssues(
             format: format,
             distribution: distribution,
             components: components,
@@ -425,9 +435,14 @@ enum PackageInspector {
             binaries: allBinaries,
             stats: stats,
             signature: signature,
-            payloadExpanded: fullExpanded,
+            payloadExpanded: scanComplete,
             language: .zhHans
         )
+
+        let sizeIssues = InstallSizeMetadata.issues(in: repack)
+        issues.append(contentsOf: sizeIssues)
+        issuesZH.append(contentsOf: sizeIssues)
+        stats.sizeMetadataIssues = sizeIssues.count
 
         log(T("Inspection complete · %d components · %d payload files · %d legacy binaries", stats.components, stats.payloadFiles, stats.bit32Binaries))
 
@@ -448,7 +463,8 @@ enum PackageInspector {
             fullDir: fullExpanded ? full : nil,
             payloadExpanded: fullExpanded,
             duration: Date().timeIntervalSince(started),
-            notes: Array(notes.prefix(40))
+            notes: Array(notes.prefix(40)),
+            compatibility: CompatibilityAnalyzer.report(binaries: allBinaries, components: components, complete: scanComplete, host: .current)
         )
     }
 
@@ -647,16 +663,14 @@ enum PackageInspector {
 
         for case let url as URL in enumerator {
             scan.scannedFiles += 1
-            if scan.scannedFiles > maxScanFiles { break }
+            if scan.scannedFiles > maxScanFiles { scan.complete = false; break }
             let values = try? url.resourceValues(forKeys: Set(keys))
             if values?.isDirectory == true { continue }
-            if values?.isRegularFile != true { continue }
+            if values?.isRegularFile != true || values?.isSymbolicLink == true { continue }
             scan.fileCount += 1
             let size = Int64(values?.fileSize ?? 0)
             scan.bytes += size
-            guard size >= 512 else { continue }
-            let ext = url.pathExtension.lowercased()
-            if textExtensions.contains(ext) { continue }
+            guard size >= 8 else { continue }
             guard let archs = MachO.architectures(at: url) else { continue }
             let relative = url.path.replacingOccurrences(of: root.path, with: baseRelativePath)
             scan.binaries.append(BinaryInfo(
@@ -811,13 +825,20 @@ enum PackageInspector {
 
         var info = DistributionInfo()
         info.hasAllowedOSVersions = text.contains("allowed-os-versions")
-        info.hasVersionScript = text.contains("system.version") || text.contains("os.version")
+        info.hasVersionScript = VersionGates.containsVersionLogic(text)
 
         if let doc = try? XMLDocument(contentsOf: url, options: []) {
             info.title = firstAttribute(in: doc.rootElement(), named: "title")
             info.productVersion = firstAttribute(in: doc.rootElement(), named: "product-version")
 
             var constraints: [OSConstraint] = []
+            if let root = doc.rootElement() {
+                let minimum = root.attribute(forName: "min-os-version")?.stringValue
+                let maximum = root.attribute(forName: "max-os-version")?.stringValue
+                if minimum != nil || maximum != nil {
+                    constraints.append(OSConstraint(id: "root-version", minVersion: minimum, maxVersion: maximum, source: "installer-gui-script", isBlocking: maximum != nil))
+                }
+            }
             func walk(_ node: XMLNode, ancestors: [String]) {
                 if let element = node as? XMLElement {
                     let name = element.name ?? ""
@@ -865,6 +886,7 @@ enum PackageInspector {
             }
             var seen = Set<String>()
             info.constraints = constraints.filter { seen.insert($0.id).inserted }
+            info.javaScriptGateCount = VersionGates.gates(in: doc).count
         } else {
             info.title = firstMatch(in: text, pattern: "product[^>]*title=\"([^\"]+)\"")
             let regex = try? NSRegularExpression(pattern: "<os-version([^>]*)>", options: [])
@@ -914,9 +936,9 @@ enum PackageInspector {
     ) -> [PackageIssue] {
         var issues: [PackageIssue] = []
 
-        if let distribution, !distribution.constraints.isEmpty {
-            let hasMax = distribution.constraints.contains { $0.isBlocking }
-            let values = distribution.constraints.map(\.display).joined(separator: ", ")
+        if let distribution, !distribution.constraints.isEmpty || distribution.javaScriptGateCount > 0 {
+            let hasMax = distribution.javaScriptGateCount > 0 || distribution.constraints.contains { $0.isBlocking }
+            let values = (distribution.constraints.map(\.display) + (distribution.javaScriptGateCount > 0 ? ["JavaScript: \(distribution.javaScriptGateCount)"] : [])).joined(separator: ", ")
             var message = L10n.s(
                 "The Distribution script gates installation on system version (%@).",
                 language,
@@ -948,7 +970,7 @@ enum PackageInspector {
                 id: "declared-32",
                 severity: .warning,
                 category: .architecture,
-                title: L10n.s("32-bit architecture declared", language),
+                title: L10n.s("Legacy architecture declared", language),
                 message: declared32.map {
                     L10n.s("%@ declares %@", language, $0.displayName, $0.declaredArch ?? L10n.s("legacy arch", language))
                 }.joined(separator: " · "),
@@ -957,16 +979,16 @@ enum PackageInspector {
         }
 
         if stats.bit32Binaries > 0 {
-            let only32 = stats.binaries > 0 && stats.bit32Binaries == stats.binaries
+            let only32 = !binaries.isEmpty && binaries.allSatisfy { MachO.isLegacyOnly($0.architectures) }
             let examples = binaries.filter(\.is32Bit).prefix(6).map(\.relativePath)
             issues.append(PackageIssue(
                 id: "binaries-32",
                 severity: only32 ? .critical : .warning,
                 category: .architecture,
-                title: L10n.s("%d 32-bit binaries found", language, stats.bit32Binaries),
+                title: L10n.s("%d binaries contain legacy slices", language, stats.bit32Binaries),
                 message: L10n.s(
                     only32
-                        ? "Every detected executable is 32-bit only. macOS 10.15 and later cannot run these slices at all."
+                        ? "Every detected executable contains only legacy architecture slices. Current macOS cannot run these executables."
                         : "Some executable slices target i386, PowerPC, or 32-bit ARM. They cannot load on current macOS releases.",
                     language
                 ),
@@ -1031,7 +1053,7 @@ enum PackageInspector {
             ))
         }
 
-        if signature.lowercased().contains("signed") {
+        if signature.lowercased().contains("signed") && !signature.lowercased().contains("unsigned") {
             issues.append(PackageIssue(
                 id: "signature",
                 severity: .info,

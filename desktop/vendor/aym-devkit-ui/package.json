@@ -1,0 +1,14 @@
+{
+  "name": "@aym-devkit/ui",
+  "version": "0.2.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./shell": "./src/shell.js",
+    "./style.css": "./src/style.css",
+    "./reference.css": "./src/vendor/reference.css",
+    "./replica.css": "./src/replica.css",
+    "./appearance.css": "./src/appearance.css",
+    "./crt": "./src/vendor/crt.js"
+  }
+}

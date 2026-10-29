@@ -1,6 +1,4 @@
-import SwiftUI
-import AppKit
-import QuartzCore
+import Foundation
 
 // MARK: - Language
 
@@ -162,7 +160,7 @@ enum L10n {
         "Warning": "警告",
         "Note": "提示",
         "System version gate": "系统版本限制",
-        "32-bit architecture declared": "声明了 32 位架构",
+        "Legacy architecture declared": "声明了旧架构",
         "%d 32-bit binar(ies) found": "发现 %d 个 32 位二进制文件",
         "Relocatable components": "可重定位组件",
         "%d high-risk install script(s)": "%d 个高风险安装脚本",
@@ -184,13 +182,13 @@ enum L10n {
         "Unsigned": "未签名",
         "The original package is not signed": "原始安装包未签名",
         "%@ declares %@": "%@ 声明了 %@",
-        "%d 32-bit binaries found": "发现 %d 个 32 位二进制文件",
+        "%d binaries contain legacy slices": "发现 %d 个含旧架构切片的二进制文件",
 
         // ── Issue messages
         "The Distribution script gates installation on system version (%@).": "Distribution 脚本通过系统版本限制安装条件（%@）。",
         " A maximum bound will block installation on every newer macOS release.": " 上限设置会阻止在任何较新的 macOS 版本上安装。",
         " Installer JavaScript also inspects the host OS version.": " 安装器的 JavaScript 还会检查主机系统版本。",
-        "Every detected executable is 32-bit only. macOS 10.15 and later cannot run these slices at all.": "所有检测到的可执行文件都只有 32 位。macOS 10.15 及更高版本完全无法运行这些切片。",
+        "Every detected executable contains only legacy architecture slices. Current macOS cannot run these executables.": "所有检测到的可执行文件都仅含旧架构切片，当前 macOS 无法运行这些程序。",
         "Some executable slices target i386, PowerPC, or 32-bit ARM. They cannot load on current macOS releases.": "部分可执行切片基于 i386、PowerPC 或 32 位 ARM，无法在当前 macOS 上加载。",
         "%d component(s) allow Installer to relocate the payload to another volume: %@.": "%d 个组件允许安装器将载荷重定位到其他卷：%@。",
         "%@ — %@. Stripping scripts changes install behavior; keep them if the package needs them.": "%@ — %@。剥离脚本会改变安装行为；如果安装包需要这些脚本，请保留。",
@@ -386,213 +384,4 @@ func P(_ text: String) -> String {
 func TP(_ key: String, _ count: Int, _ args: CVarArg...) -> String {
     let format = L10n.t(key, count, args)
     return P(format)
-}
-
-// MARK: - Window presets
-
-enum WindowPreset: String, CaseIterable, Identifiable {
-    case compact
-    case standard
-    case large
-
-    var id: String { rawValue }
-
-    var contentSize: NSSize {
-        switch self {
-        case .compact: return NSSize(width: 1_080, height: 720)
-        case .standard: return NSSize(width: 1_240, height: 830)
-        case .large: return NSSize(width: 1_440, height: 940)
-        }
-    }
-
-    var sizeText: String {
-        "\(Int(contentSize.width)) × \(Int(contentSize.height))"
-    }
-
-    var title: String {
-        switch self {
-        case .compact: return T("Compact")
-        case .standard: return T("Standard")
-        case .large: return T("Large")
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .compact: return "rectangle.compress.vertical"
-        case .standard: return "rectangle"
-        case .large: return "rectangle.expand.vertical"
-        }
-    }
-}
-
-enum AppAppearance: String, CaseIterable, Identifiable {
-    case system
-    case light
-    case dark
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .system: return T("System")
-        case .light: return T("Light")
-        case .dark: return T("Dark")
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .system: return "circle.lefthalf.filled"
-        case .light: return "sun.max.fill"
-        case .dark: return "moon.fill"
-        }
-    }
-
-    var appearance: NSAppearance? {
-        switch self {
-        case .system: return nil
-        case .light: return NSAppearance(named: .aqua)
-        case .dark: return NSAppearance(named: .darkAqua)
-        }
-    }
-
-    static var saved: AppAppearance {
-        let raw = UserDefaults.standard.string(forKey: "packager.appearance") ?? AppAppearance.system.rawValue
-        return AppAppearance(rawValue: raw) ?? .system
-    }
-}
-
-@MainActor
-final class WindowManager {
-    static let shared = WindowManager()
-
-    weak var window: NSWindow?
-    private var attachedWindowID: ObjectIdentifier?
-    private var didAttach = false
-
-    func attach(_ window: NSWindow) {
-        self.window = window
-        guard attachedWindowID != ObjectIdentifier(window) else { return }
-        attachedWindowID = ObjectIdentifier(window)
-        guard !didAttach else { return }
-        didAttach = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-            guard let preset = AppSettings.savedPreset() else { return }
-            self?.apply(preset, animated: false)
-        }
-    }
-
-    func apply(_ preset: WindowPreset, animated: Bool = true) {
-        guard let window else { return }
-        var size = preset.contentSize
-        if let screen = window.screen ?? NSScreen.main {
-            let visible = screen.visibleFrame
-            size.width = min(size.width, max(1_040, visible.width - 60))
-            size.height = min(size.height, max(680, visible.height - 80))
-        }
-        if animated {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.22
-                context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                window.animator().setContentSize(size)
-                window.animator().center()
-            }
-        } else {
-            window.setContentSize(size)
-            window.center()
-        }
-    }
-}
-
-// MARK: - Settings store
-
-@MainActor
-final class AppSettings: ObservableObject {
-    @Published var language: AppLanguage {
-        didSet {
-            UserDefaults.standard.set(language.rawValue, forKey: "packager.language")
-            L10n.language = language
-            NotificationCenter.default.post(name: .packagerLanguageChanged, object: nil)
-        }
-    }
-
-    @Published var hasCompletedOnboarding: Bool {
-        didSet {
-            UserDefaults.standard.set(hasCompletedOnboarding, forKey: "packager.onboardingCompleted")
-        }
-    }
-
-    @Published var windowPreset: WindowPreset {
-        didSet {
-            UserDefaults.standard.set(windowPreset.rawValue, forKey: "packager.windowPreset")
-            WindowManager.shared.apply(windowPreset)
-        }
-    }
-
-    @Published var appearance: AppAppearance {
-        didSet {
-            UserDefaults.standard.set(appearance.rawValue, forKey: "packager.appearance")
-            applyAppearance()
-        }
-    }
-
-    init() {
-        let defaults = UserDefaults.standard
-        let savedLanguage = defaults.string(forKey: "packager.language")
-            .flatMap(AppLanguage.init(rawValue:)) ?? .en
-        language = savedLanguage
-        L10n.language = savedLanguage
-        hasCompletedOnboarding = defaults.bool(forKey: "packager.onboardingCompleted")
-        windowPreset = Self.savedPreset() ?? .standard
-        appearance = AppAppearance.saved
-        applyAppearance()
-    }
-
-    static func savedPreset() -> WindowPreset? {
-        guard let raw = UserDefaults.standard.string(forKey: "packager.windowPreset") else { return nil }
-        return WindowPreset(rawValue: raw)
-    }
-
-    func completeOnboarding(language: AppLanguage) {
-        self.language = language
-        hasCompletedOnboarding = true
-    }
-
-    func resetOnboarding() {
-        hasCompletedOnboarding = false
-    }
-
-    func toggleLanguage() {
-        language = language == .en ? .zhHans : .en
-    }
-
-    private func applyAppearance() {
-        NSApp?.appearance = appearance.appearance
-    }
-}
-
-extension Notification.Name {
-    static let packagerOpenSettings = Notification.Name("packager.openSettings")
-    static let packagerLanguageChanged = Notification.Name("packager.languageChanged")
-}
-
-struct WindowAccessor: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView(frame: .zero)
-        DispatchQueue.main.async {
-            if let window = view.window {
-                WindowManager.shared.attach(window)
-            }
-        }
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async {
-            if let window = nsView.window {
-                WindowManager.shared.attach(window)
-            }
-        }
-    }
 }

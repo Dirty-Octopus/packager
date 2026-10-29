@@ -165,6 +165,7 @@ enum FixKind: String, Hashable {
     case versionLimits
     case relocatable
     case scripts
+    case installSizes
 }
 
 struct PackageIssue: Identifiable, Hashable {
@@ -232,6 +233,7 @@ struct DistributionInfo: Hashable {
     var constraints: [OSConstraint] = []
     var hasAllowedOSVersions: Bool = false
     var hasVersionScript: Bool = false
+    var javaScriptGateCount: Int = 0
 }
 
 struct PackageComponent: Identifiable, Hashable {
@@ -289,6 +291,7 @@ struct InspectionStats: Hashable {
     var highRiskScripts: Int = 0
     var relocatableComponents: Int = 0
     var osConstraints: Int = 0
+    var sizeMetadataIssues: Int = 0
 }
 
 struct PackageInspection {
@@ -309,6 +312,7 @@ struct PackageInspection {
     var payloadExpanded: Bool
     var duration: TimeInterval
     var notes: [String]
+    var compatibility: [String: Any] = [:]
 
     func issues(for language: AppLanguage) -> [PackageIssue] {
         language == .zhHans && !issuesZH.isEmpty ? issuesZH : issues
@@ -321,6 +325,7 @@ struct RebuildOptions: Equatable {
     var removeVersionLimits: Bool = true
     var removeRelocatable: Bool = true
     var stripHighRiskScripts: Bool = false
+    var repairInstallSizes: Bool = false
     var outputDirectory: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop")
     var outputName: String = ""
 
@@ -333,6 +338,7 @@ struct RebuildOptions: Equatable {
         options.removeVersionLimits = inspection.stats.osConstraints > 0
         options.removeRelocatable = inspection.stats.relocatableComponents > 0
         options.stripHighRiskScripts = false
+        options.repairInstallSizes = inspection.stats.sizeMetadataIssues > 0
         options.outputName = Self.defaultName(for: inspection.sourceURL)
         return options
     }
@@ -361,6 +367,7 @@ struct BuildResult {
     var appliedFixCount: Int
     var removedScriptNames: [String]
     var verified: Bool
+    var warnings: [String] = []
 }
 
 enum BuildStage {

@@ -16,7 +16,7 @@ enum PackageRebuilder {
         try? fm.removeItem(at: repack)
         let isDirectory = (try? source.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
         if isDirectory {
-            try fm.copyItem(at: source, to: repack)
+            try PackageExpansion.expand(source: source, destination: repack, log: log)
         } else {
             let expand = Shell.run("/usr/sbin/pkgutil", ["--expand", source.path, repack.path])
             guard expand.succeeded else {
@@ -94,6 +94,10 @@ enum PackageRebuilder {
             }
         }
 
+        if options.repairInstallSizes {
+            appliedFixes += try InstallSizeMetadata.repair(in: repack, log: log)
+        }
+
         // 4. Flatten into a modern XAR archive.
         let staging = inspection.workRoot.appendingPathComponent("staging", isDirectory: true)
         try? fm.removeItem(at: staging)
@@ -124,6 +128,18 @@ enum PackageRebuilder {
         let verify = Shell.run("/usr/sbin/pkgutil", ["--expand", stagedURL.path, verifyDir.path])
         guard verify.succeeded else {
             throw PackagerError.buildFailed("Verification failed: \(verify.firstErrorLine ?? "the new package could not be expanded.")")
+        }
+        for component in inspection.components {
+            let infoURL = verifyDir.appendingPathComponent(component.relativePath).appendingPathComponent("PackageInfo")
+            guard let info = PackageInfoFile.read(infoURL), info.identifier == component.identifier else {
+                throw PackagerError.buildFailed("Verification failed: component metadata missing or changed: \(component.displayName)")
+            }
+        }
+        var warnings: [String] = []
+        if options.removeVersionLimits,
+           let distribution = try? XMLDocument(contentsOf: verifyDir.appendingPathComponent("Distribution")),
+           !VersionGates.gates(in: distribution).isEmpty {
+            warnings.append("Mixed JavaScript checks remain; review in Full mode. / 混合 JavaScript 检查仍保留，请在完整模式复核。")
         }
         try? fm.removeItem(at: verifyDir)
         log(T("Archive verified"))
@@ -176,7 +192,8 @@ enum PackageRebuilder {
             duration: Date().timeIntervalSince(started),
             appliedFixCount: appliedFixes,
             removedScriptNames: removedScriptNames,
-            verified: true
+            verified: true,
+            warnings: warnings
         )
     }
 
@@ -192,6 +209,15 @@ enum PackageRebuilder {
 
         if let doc = try? XMLDocument(contentsOf: url, options: []) {
             var removals: [XMLNode] = []
+            let versionGates = VersionGates.gates(in: doc)
+            for gate in versionGates where gate.removable {
+                gate.element.detach()
+                removedCount += 1
+                log("Removed JavaScript OS gate: \(gate.expression)")
+            }
+            for gate in versionGates where !gate.removable {
+                log("Manual review required: mixed JavaScript check preserved: \(gate.expression)")
+            }
 
             func visit(_ node: XMLNode) {
                 if let element = node as? XMLElement {
@@ -208,7 +234,7 @@ enum PackageRebuilder {
                         if hasMax { element.removeAttribute(forName: "max") }
                     }
                     if name == "installer-gui-script" {
-                        if element.attribute(forName: "min-os-version") != nil { removedCount += 1 }
+                        if element.attribute(forName: "min-os-version") != nil || element.attribute(forName: "max-os-version") != nil { removedCount += 1 }
                         element.removeAttribute(forName: "min-os-version")
                         element.removeAttribute(forName: "max-os-version")
                     }

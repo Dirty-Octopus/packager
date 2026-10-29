@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import Darwin
 
 struct CommandResult {
     var exitCode: Int32
@@ -48,7 +49,10 @@ enum Shell {
         activeProcesses.removeAll()
         lock.unlock()
         for process in processes where process.isRunning {
-            process.terminate()
+            let pid = process.processIdentifier
+            let group = getpgid(pid)
+            if group == pid && group != getpgrp() { kill(-group, SIGTERM) }
+            else { kill(pid, SIGTERM) }
         }
     }
 

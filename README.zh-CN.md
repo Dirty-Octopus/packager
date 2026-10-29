@@ -1,192 +1,109 @@
-<h1 align="center">
-  <img src="./docs/icon.png" alt="Packager" width="120" />
-  <br>
-  Packager
-</h1>
+<h1 align="center"><img src="docs/icon.png" width="96" alt="Packager"><br>Packager</h1>
 
-<h3 align="center">面向旧版 <code>.pkg</code> / <code>.mpkg</code> 安装包的本地 macOS 工作台。</h3>
+面向旧版 macOS `.pkg` / `.mpkg` 安装包的本地工作台。检查结构、判断本机架构兼容性、按需修复后重新封装。
 
-<p align="center">
-  <a href="./README.md">English</a> ·
-  <a href="./README.zh-CN.md">Chinese</a>
-</p>
+[English](README.md) · 简体中文 · MIT
 
-<p align="center">
-  <a href="https://github.com/Dirty-Octopus/packager/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Dirty-Octopus/packager?style=flat-square"></a>
-  <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-000000?style=flat-square">
-  <img alt="Universal" src="https://img.shields.io/badge/arch-arm64%20%7C%20x86__64-444444?style=flat-square">
-  <img alt="MIT" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
-</p>
+当前源码版本为 **1.1.0**。界面使用 [AYMDevKitUI](https://github.com/Dirty-Octopus/AYMDevKitUI) 当前的 Electron 实现，类别为通用工具蓝色 `#164BFF`；安装包处理由独立 Swift 辅助程序完成。全部字体、界面音效和资产随 App 打包。
 
-Packager 可以打开旧版 macOS 安装包，展示其中的组件、脚本与二进制，标出现代 macOS 已不再兼容的部分，并将修改后的内容重新封装为平面 XAR 安装包。所有操作都在临时工作区中完成，不会安装任何内容，不会上传文件，也不会写入系统目录。
+![快速模式](docs/quick-mode.png)
 
-无需账号，无遥测，不上传任何文件。
+## 快速模式
 
-## 界面预览
+主界面默认打开快速模式。导入安装包后，点击「一键尝试转换」：
 
-| 浅色 | 深色 |
-| --- | --- |
-| ![浅色预览](./docs/preview-light.png) | ![深色预览](./docs/preview-dark.png) |
+- 尝试移除支持的系统版本限制。
+- 清除检测到的重定位标记。
+- 修复含实际内容却显示为 0 KB 的安装尺寸元数据。
+- 将支持的旧式 Bundle 转换为平面 XAR 安装包。
+- 保留安装脚本和二进制，原文件不变；同名输出会自动编号。
 
-![中文界面](./docs/preview-light-zh.png)
+**快速转换可能失败，归档验证通过也不保证安装或运行成功。推荐使用完整模式，检查具体问题后再选择修复。**
 
-## 首次启动
+## 本机兼容性初判
 
-首次启动时，Packager 会让你选择 English 或简体中文。之后可以随时通过齿轮图标或 <kbd>⌘</kbd><kbd>,</kbd> 修改界面语言、窗口尺寸预设与外观。
+快速模式与完整模式均显示本机 CPU、macOS 和 Rosetta 检测结果，并展示已识别二进制的位数与架构：Intel 的 i386 / x86_64、ARM 的 arm / arm64 / arm64_32、PowerPC 的 ppc / ppc64。通用二进制会列出各切片。
 
-- 中文 / English，切换后立即生效，无需重启
-- 紧凑 1080 × 720、标准 1240 × 830、大 1440 × 940
-- 跟随系统 / 浅色 / 深色
-- 窗口可从任意边缘自由缩放
+初判区分：有本机原生架构、可能通过 Rosetta 运行、需要 Rosetta、部分内容不兼容、检测到的程序无法运行、信息不足。可以展开查看每个组件的架构与结论。
 
-![首次启动](./docs/onboarding.png)
+- 安装与运行分别说明，不把重新封装当作兼容性保证。
+- 只有旧切片与包含可用 64 位切片的通用二进制分别判断。
+- 未展开完整载荷、扫描达到上限或没有识别到二进制时，不给出肯定运行结论。
+- Intel 插件还受宿主架构和桥接支持影响。系统 API、依赖、授权和签名也可能阻止运行。
+- 不安装 Rosetta，不转换机器码，不生成新的 64 位或 ARM 切片。
 
-![设置](./docs/settings.png)
+依据：[Apple 的 32 位兼容性说明](https://support.apple.com/103076)、[Rosetta 与 Intel 软件支持说明](https://support.apple.com/102527)。通用 Rosetta 支持按 Apple 公布的 macOS 27 及以前处理；macOS 28 的特定旧游戏例外无法由本工具静态确认。
 
-## 功能
+## 完整模式
 
-- 将平面 `.pkg` 或旧式 Bundle `.mpkg` 拖入窗口。
-- 在工作区展开后，用树状结构展示产品、组件、Distribution、PackageInfo、Bom、安装脚本、载荷目录和单个 Mach-O 二进制。
-- 检测 32 位 / PowerPC / 32 位 ARM 切片，包括“通用二进制中夹带旧切片”的情况。
-- 检测 Distribution 中的系统版本限制（`min`、`max`、`allowed-os-versions` 及安装器 JavaScript 检查）。
-- 检测可重定位组件与高风险安装脚本（递归删除、修改 Gatekeeper、`curl | sh`、常驻守护进程、SIP/固件写入等）。
-- 对副本应用一项或多项现代化修改：
-  - 移除系统版本限制
-  - 清除可重定位标记
-  - 剥离高风险脚本
-- 调用系统 `pkgutil` 流程重新封装为现代 XAR 安装包，校验 Installer 可以读取，然后保存到你选择的目录。
-- 在活动日志中显示实际执行的命令与进度。
+![完整模式](docs/full-mode-dark.png)
 
-Packager 只负责检测旧架构，不会凭空生成 64 位代码。重新封装无法让仅含 32 位代码的二进制在当前 macOS 上运行。
+- 左侧切换已导入的安装包。
+- 结构树展示 Distribution、PackageInfo、Bom、载荷、脚本和二进制；支持搜索、筛选、展开与只读文本预览。
+- 问题面板按严重程度列出检测结果，并可切换对应修复。
+- 分别选择版本限制、重定位、安装尺寸和高风险脚本处理。
+- 高风险脚本检测使用文本启发式规则，可能误报或漏报；剥离脚本默认关闭，可能导致组件未安装。
+- 活动记录展示检查、转换与验证事件。操作可取消；取消会终止对应的系统命令。
 
-## 安装
+版本限制修复支持 XML 节点、根属性，以及能确认只检查系统版本的 JavaScript 安装谓词。混合硬件、文件或其他条件的检查会保留，并在重建结果中提示人工复核；不会执行安装包 JavaScript 来分析它。
 
-从 [Releases 页面](https://github.com/Dirty-Octopus/packager/releases/latest) 下载最新的通用 DMG 或 ZIP。
+设置在同一窗口中展开，支持中英文、跟随系统／浅色／深色、显示处理、CRT、柔化、动效与交互音效。按 `⌘,` 打开，Escape 关闭。按 `⌘O` 打开安装包，`⌘R` 按当前模式重新封装。
 
-1. 打开 DMG，将 `Packager.app` 拖入 `/Applications`；或解压 ZIP 后将 App 移动到该目录。
-2. 如果 macOS 首次启动时阻止打开，请在终端中执行：
+![英文浅色界面](docs/quick-mode-light-en.png)
 
-```bash
-xattr -dr com.apple.quarantine /Applications/Packager.app
-codesign --force --deep --sign - /Applications/Packager.app
-open /Applications/Packager.app
-```
+## 处理与验证范围
 
-由于本项目开源，开发者没有支付 Apple 每年 99 美元的开发者计划费用，安装后需要执行上面的命令。如果你有自己的 Developer ID 证书，也可以自行签名。
+处理在 `~/Library/Application Support/Packager/Workspace/session-*` 的独立临时目录中完成，正常退出会清理当前会话。输入包不变，不运行安装脚本或载荷程序，不向系统安装其中的软件，也没有遥测或上传。
 
-Release 使用 ad-hoc 签名，未经 Apple 公证。上面的命令会移除隔离标记并应用 ad-hoc 签名。此方式仅适合本机使用；ad-hoc 签名不能替代 Developer ID 签名与公证。
+重建会从原文件重新展开，应用所选修改，经 `pkgutil --flatten` 生成 XAR，再次展开并核对组件身份后保存。此验证证明归档和组件元数据可读取，不证明真实安装、插件加载或音频播放正常。新包不保留原签名。
 
-需要 macOS 14 或更高版本。Release 为通用二进制，同时支持 Apple Silicon 与 Intel Mac。
+只有保存到受保护目录时才会展示具体复制命令，并通过 macOS 原生管理员授权保存成品。可以取消。
 
-## 使用
+## 本地构建与安装
 
-1. 将 `.pkg` / `.mpkg` 拖入窗口，或按 <kbd>⌘</kbd><kbd>O</kbd>。安装包会被复制或展开到工作区，原始文件不会被修改。
-2. 在「结构」中展开组件，查看载荷、脚本与二进制。旧架构切片会以红色标记。可使用筛选或搜索快速定位二进制、脚本或警告。
-3. 在「问题」中查看检测到的版本限制与风险脚本。可以直接在问题卡片上启用修复，也可以在右侧选项中启用。
-4. 在「现代化」中勾选需要的修改。所有修改都会在重新封装时应用到副本。
-5. 选择输出目录与产品名称，点击「重新封装」。
-6. 新生成的平面 XAR 安装包会经过校验后保存。点击「在 Finder 中显示」即可打开所在目录。
+需要 macOS 14+、完整 Xcode、Node.js 22+ 和 npm。默认构建当前机器架构的 Electron App；Swift 辅助程序包含 arm64 与 x86_64。
 
-如果输出目录当前用户不可写，Packager 会通过 macOS 原生密码弹窗请求管理员授权。只有你确认后，相关命令才会以管理员权限执行。
-
-## 实现方式
-
-Packager 封装了 macOS 自带的系统工具：
-
-- `pkgutil --expand` / `--expand-full`：在工作区检查安装包
-- `pkgutil --flatten`：重新构建平面 XAR 产品
-- `pkgutil --check-signature`：读取原始签名状态
-- 一个轻量的 Mach-O 头部读取器：用于架构检测，不依赖逐文件调用 `lipo`
-
-应用会直接解析 Distribution XML、`PackageInfo`（同时支持 property list 与 `pkg-info` 两种格式）、`Bom`、载荷与脚本；重建后的归档还会再次展开校验，之后才移动到输出目录。
-
-工作区位于 `~/Library/Application Support/Packager/Workspace`，退出 Packager 时会自动清空。安装包内容不会被写入 `/`、`/System` 或 `/Library`；唯一的可选提权步骤是将成品复制到受保护目录。
-
-## 常见问题
-
-### 安装包会被上传吗？
-
-不会。Packager 不发起网络请求，不收集遥测，也不会上传文件。它只是系统工具之上的本地图形界面。
-
-### Packager 会安装或修改安装包吗？
-
-不会。它只读取输入安装包，在工作区展开副本，并把新的产品写入输出目录。原始文件不会被修改。
-
-### 需要管理员权限吗？
-
-正常使用不需要。只有当你把成品保存到当前用户不可写的目录时，Packager 才会展示成品并调用 macOS 的密码弹窗授权一次，相关命令通过 `osascript` 以管理员权限执行。你可以取消。
-
-### 重新封装会保留签名吗？
-
-不会。重写归档会使原签名失效。新生成的安装包没有签名；如需分发，请使用自己的 Developer ID 重新签名并公证。
-
-### 可以移除 32 位代码或补上 64 位切片吗？
-
-不能。Packager 会检测并高亮旧架构切片；重新封装会保持载荷原样，不会改写二进制。
-
-### 支持旧式 MPKG Bundle 吗？
-
-支持。Bundle 形式的产品会按组件逐个展开，再重新构建为适用于现代 macOS 的平面 XAR 归档。
-
-### macOS 提示 Packager 已损坏、无法打开或来自未知开发者
-
-请执行[安装](#安装)中的命令。Release 使用 ad-hoc 签名，未经公证。
-
-### 没有 Xcode 可以使用吗？
-
-预编译的 App 可以直接使用。从源码构建需要带 SwiftUI 宏工具的 Xcode；仅有 Command Line Tools 不够。
-
-## 开发
-
-环境要求：
-
-- macOS 14 或更高版本
-- 带 SwiftUI 宏工具的 Xcode（已使用 Xcode 27.1 验证）
-
-构建通用 App：
-
-```bash
+```sh
 bash scripts/build.sh
+bash scripts/install.sh --no-build
 ```
 
-安装本地构建到 `/Applications`（仅在需要时请求管理员权限）：
+App 位于 `dist/Packager.app`，安装到 `/Applications/Packager.app`。`ARCH=x64 bash scripts/build.sh` 可选择 Intel 目标，需取得对应的 Electron 运行时；此轮本地验收使用 Apple Silicon 目标。
 
-```bash
-bash scripts/install.sh
+产物采用 ad-hoc 签名，未经 Apple 公证。需要发布归档时运行 `bash scripts/package_release.sh`，生成 DMG、ZIP 和 SHA-256；该脚本不会提交或推送 Git。
+
+## 开发与测试
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
+npm ci --prefix desktop
+node scripts/prepare_electron.cjs
+npm run build --prefix desktop
+npm test --prefix desktop
+npm run test:browser --prefix desktop
 ```
 
-生成包含 DMG、ZIP 和 SHA-256 校验和的通用 Release：
+GUI 测试使用真实 Electron 窗口与 Swift IPC。设置 `PACKAGER_TEST_ORIGINAL`、`PACKAGER_TEST_FIXED`、`PACKAGER_TEST_LEGACY` 后，会选择本地样本，验证真实检查、快速重建、完整模式、架构初判与设置。测试只替换原生文件选择器的返回值，不模拟处理结果。可用 `PACKAGER_TEST_APP=/absolute/path/Packager.app/Contents/MacOS/Packager` 对打包后的 App 运行同一套测试。
 
-```bash
-bash scripts/package_release.sh
+命令行入口：
+
+```sh
+.build/backend/Packager --version
+.build/backend/Packager --inspect /path/to/input.pkg
+.build/backend/Packager --inspect /path/to/input.pkg --rebuild /path/to/output
 ```
 
-产物会写入 `dist/`。
+三样本回归工具：
 
-开发时也可以使用命令行检查模式：
-
-```bash
-.build/release/Packager --inspect "/path/to/package.pkg"
-.build/release/Packager --inspect "/path/to/package.pkg" --rebuild /tmp/out --all
+```sh
+python3 scripts/validate_packages.py \
+  --original /path/to/original.pkg \
+  --fixed /path/to/fixed.pkg \
+  --legacy /path/to/legacy.mpkg \
+  --backend .build/backend/Packager \
+  --output .build/validation/regression
 ```
 
-## 安全与隐私
+它核对源文件不变、脚本与载荷字节保留、0 KB 修复、旧 Bundle 转换和 Installer 选项可读性，不执行安装。样本和重建产物不进入 Git。
 
-- 无网络请求、无遥测、无账号、无上传。
-- 所有解包与重新封装都在 `~/Library/Application Support/Packager/Workspace` 内完成。
-- 输入安装包以只读方式打开。
-- 仅当输出目录需要权限时才请求管理员授权，且只执行界面上展示的复制命令。
-- App 使用 ad-hoc 签名。如需更强的信任链，请审查源码或自行构建。
-
-## 致谢
-
-- Apple 的 `pkgutil`、`pkgbuild`、`productbuild`、Installer 与 Mach-O 格式。
-- SwiftUI 与 AppKit。
-- 欢迎页、设置结构与安装须知参考 [Seal](https://github.com/Dirty-Octopus/seal)。
-- README 结构参考 [Clash Verge Rev](https://github.com/clash-verge-rev/clash-verge-rev)。
-
-Packager 与 Apple 无关联。
-
-## 许可证
-
-MIT，详见 [LICENSE](./LICENSE)。
+源码结构与本轮验证见 [开发说明](docs/DEVELOPMENT.md)。AYMDevKitUI 的固定版本、接入方式与改动见 [来源记录](desktop/vendor/aym-devkit-ui/PROVENANCE.md)。

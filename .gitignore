@@ -9,3 +9,9 @@ DerivedData/
 *.provisionprofile
 *.p12
 .env
+node_modules/
+desktop/dist/
+desktop/release/
+test-results/
+playwright-report/
+__pycache__/

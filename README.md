@@ -1,192 +1,85 @@
-<h1 align="center">
-  <img src="./docs/icon.png" alt="Packager" width="120" />
-  <br>
-  Packager
-</h1>
+<h1 align="center"><img src="docs/icon.png" width="96" alt="Packager"><br>Packager</h1>
 
-<h3 align="center">A local macOS workbench for legacy <code>.pkg</code> and <code>.mpkg</code> installers.</h3>
+A local workbench for legacy macOS `.pkg` and `.mpkg` installers. Inspect their contents, assess architecture compatibility with this Mac, review repairs and repackage.
 
-<p align="center">
-  <a href="./README.md">English</a> ·
-  <a href="./README.zh-CN.md">Chinese</a>
-</p>
+English · [简体中文](README.zh-CN.md) · MIT
 
-<p align="center">
-  <a href="https://github.com/Dirty-Octopus/packager/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/Dirty-Octopus/packager?style=flat-square"></a>
-  <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-000000?style=flat-square">
-  <img alt="Universal" src="https://img.shields.io/badge/arch-arm64%20%7C%20x86__64-444444?style=flat-square">
-  <img alt="MIT" src="https://img.shields.io/badge/license-MIT-blue?style=flat-square">
-</p>
+The current source version is **1.1.0**. The interface uses the active Electron implementation of [AYMDevKitUI](https://github.com/Dirty-Octopus/AYMDevKitUI), with utility blue `#164BFF`. An isolated Swift helper handles installer packages. Fonts, interface audio and assets are bundled locally.
 
-Packager opens legacy macOS installer packages, shows what is inside them, flags the parts that modern macOS no longer tolerates, and rebuilds the result as a flat XAR product. Everything happens in a disposable workspace. Nothing is installed, uploaded, or written into the system.
+![Quick mode](docs/quick-mode.png)
 
-No account, telemetry, or file upload is involved.
+## Quick mode
 
-## Preview
+The main interface opens in Quick mode. Import a package and choose **Try conversion** to apply supported OS-limit, relocation and zero-size metadata repairs, and convert supported legacy bundles into flat XAR packages. Install scripts, binaries and source packages are preserved. Existing output files are never overwritten.
 
-| Light | Dark |
-| --- | --- |
-| ![Light preview](./docs/preview-light.png) | ![Dark preview](./docs/preview-dark.png) |
+**Quick conversion can fail. A verified archive does not guarantee successful installation or runtime. Full mode is recommended to review issues and choose changes explicitly.**
 
-![Chinese interface](./docs/preview-light-zh.png)
+## Compatibility with this Mac
 
-## First launch
+Quick and Full modes show the current CPU, macOS and detected Rosetta installation, plus recognized CPU families and bit widths: Intel i386 / x86_64, ARM arm / arm64 / arm64_32 and PowerPC ppc / ppc64. Universal binaries list their slices.
 
-On first launch, Packager asks you to choose English or Simplified Chinese. The welcome screen, interface language, window size preset, and appearance can be changed later from the gear icon or with <kbd>⌘</kbd><kbd>,</kbd>.
+The assessment distinguishes native architecture, possible Rosetta translation, missing Rosetta, partially incompatible contents, incompatible detected executables and insufficient data. Expand the component table to see individual results.
 
-- English / Simplified Chinese, switched live without a relaunch
-- Compact 1080 × 720, Standard 1240 × 830, Large 1440 × 940
-- System / Light / Dark appearance
-- The window is freely resizable from any edge
+Installation and runtime are reported separately. Mixed legacy/64-bit binaries are distinguished from legacy-only executables. Incomplete scans or packages without recognized binaries never receive an affirmative runtime verdict. Dependencies, operating-system APIs, licensing, signing and plug-in host compatibility remain outside an architecture-only assessment. Packager does not install Rosetta or generate new machine-code slices.
 
-![First launch](./docs/onboarding.png)
+References: [Apple’s 32-bit compatibility guidance](https://support.apple.com/103076), [Intel apps and Rosetta](https://support.apple.com/102527). General Rosetta availability follows Apple’s macOS 27-and-earlier guidance; static inspection cannot establish eligibility for the limited older-game exceptions in macOS 28.
 
-![Settings](./docs/settings.png)
+## Full mode
 
-## What it does
+![Full mode](docs/full-mode-dark.png)
 
-- Drag a flat `.pkg` or a legacy bundle `.mpkg` into the window.
-- Expand it in the workspace and show the internal structure as a tree: product, components, Distribution, PackageInfo, Bom, install scripts, payload folders, and individual Mach-O binaries.
-- Flag 32-bit / PowerPC / 32-bit ARM slices, including universal binaries that contain a legacy slice.
-- Detect system-version gates in the Distribution script (`min`, `max`, `allowed-os-versions`, installer JavaScript checks).
-- Detect relocatable components and high-risk install scripts (recursive deletion, Gatekeeper changes, `curl | sh`, LaunchDaemons, SIP/firmware writes, and more).
-- Apply one or more modernizations to a copy:
-  - remove OS version limits
-  - clear relocatable flags
-  - strip high-risk install scripts
-- Repackage with the system `pkgutil` pipeline into a modern XAR product, verify that Installer can read it, and save it to a folder you choose.
-- Show the exact commands and progress in the activity log.
+- Switch between imported packages in the sidebar.
+- Browse Distribution, PackageInfo, Bom, payloads, scripts and Mach-O files. Search, filter and preview text without executing it.
+- Review issues by severity and select repairs individually.
+- Optionally strip scripts identified by text heuristics as high risk. This is off by default and can prevent components from being installed.
+- Follow inspection, conversion and verification events. Cancellation stops the worker and its system-tool children.
 
-Packager detects legacy architectures — it does not invent 32-bit code. Repackaging cannot make a 32-bit-only binary run on current macOS.
+Version-limit repair handles XML elements and root attributes, plus JavaScript installation predicates whose entire dependency set can be established as OS-version checks. Mixed hardware/file/other checks remain intact and produce a manual-review warning after rebuilding. Package JavaScript is not executed for analysis.
 
-## Install
+In-window settings provide Chinese/English, system/light/dark appearance, display treatment, CRT, softness, motion and interface audio. Use Command-comma to open settings and Escape to close them. Command-O opens packages; Command-R rebuilds using the current mode.
 
-Download the latest universal DMG or ZIP from the [Releases page](https://github.com/Dirty-Octopus/packager/releases/latest).
+![English light interface](docs/quick-mode-light-en.png)
 
-1. Open the DMG and drag `Packager.app` into `/Applications`, or unzip the archive and move it there.
-2. If macOS blocks the app on first launch, run the following commands in Terminal:
+## Processing and verification
 
-```bash
-xattr -dr com.apple.quarantine /Applications/Packager.app
-codesign --force --deep --sign - /Applications/Packager.app
-open /Applications/Packager.app
-```
+Each session has an isolated folder under `~/Library/Application Support/Packager/Workspace/session-*`, removed on normal exit. Inputs remain unchanged. Inspection never runs install scripts or payload programs, installs included software, uploads files or collects telemetry.
 
-Because this project is open source and the developer has not paid Apple's $99 developer program fee, run the commands above after installation. If you have a Developer ID certificate you can sign the app yourself instead.
+Rebuilding expands the original again, applies selected changes, creates a flat XAR using `pkgutil --flatten`, expands the result and verifies component identities before saving. Verification covers archive structure and readable component metadata. It does not establish actual installation, plug-in loading or audio playback. Original installer signatures do not carry over.
 
-The release is ad-hoc signed, not notarized by Apple. The commands remove the quarantine flag and apply an ad-hoc signature. This is intended for local use; ad-hoc signatures are not a substitute for Developer ID signing or notarization.
+Saving to a protected folder displays the exact copy command and requests native macOS administrator authorization. This step can be cancelled.
 
-Requires macOS 14 or later. The release is a universal binary for Apple Silicon and Intel Macs.
+## Build and install locally
 
-## Usage
+Requirements: macOS 14+, full Xcode, Node.js 22+ and npm. The Electron app defaults to the current machine architecture; the Swift helper contains arm64 and x86_64 slices.
 
-1. Drag a `.pkg` / `.mpkg` into the window, or press <kbd>⌘</kbd><kbd>O</kbd>. The package is copied or expanded into the workspace; the original file is not modified.
-2. On **Structure**, expand components to review payload contents, scripts, and binaries. Legacy slices are marked in red. Use the filters or the search field to isolate binaries, scripts, or warnings.
-3. On **Issues**, review the detected gates and risky scripts. A fix can be enabled right from an issue card, or later from the options panel.
-4. In **Modernize**, enable the fixes you want. All edits are applied to a copy during repackaging.
-5. Choose an output folder and a product name, then click **Repackage**.
-6. The new flat XAR package is verified and saved. Use **Reveal in Finder** to open its folder.
-
-If the output folder is not writable by your user, Packager asks for administrator authorization through the native macOS password sheet. Nothing runs as root unless you approve that prompt.
-
-## How it works
-
-Packager wraps the system tooling that ships with macOS:
-
-- `pkgutil --expand` / `--expand-full` to inspect packages in the workspace
-- `pkgutil --flatten` to rebuild a flat XAR product
-- `pkgutil --check-signature` to read the original signature state
-- a small Mach-O header reader for architecture detection (no `lipo` subprocess per file)
-
-Distribution XML, `PackageInfo` (both the property-list and `pkg-info` dialects), `Bom`, payloads, and scripts are inspected directly. The rebuilt archive is expanded once more to verify it before it is moved to your chosen folder.
-
-The workspace lives at `~/Library/Application Support/Packager/Workspace`. It is cleared when Packager quits. Package contents are never written to `/`, `/System`, or `/Library`; the only optional privileged step is copying the finished product into a protected output folder.
-
-## FAQ
-
-### Is my package uploaded anywhere?
-
-No. Packager does not make network requests, does not collect telemetry, and does not upload files. The app is a local GUI around system tools.
-
-### Does Packager install or modify the package?
-
-No. It only reads the input package, expands copies in its workspace, and writes a new product to the output folder. The original file is never modified.
-
-### Does Packager need administrator privileges?
-
-Not for normal use. If you save the rebuilt package into a folder your user cannot write to, Packager shows the rebuilt product and asks macOS for authorization once, using `osascript` with administrator privileges. You can cancel that prompt.
-
-### Does repackaging preserve the signature?
-
-No. Rewriting the archive invalidates the original signature. The rebuilt product is unsigned; sign and notarize it with your own Developer ID if you plan to distribute it.
-
-### Can Packager remove 32-bit code or add 64-bit slices?
-
-No. It detects and highlights legacy architecture slices. Repackaging keeps the payload as-is; it does not rewrite binaries.
-
-### Does it support legacy MPKG bundles?
-
-Yes. Bundle-style products are expanded component by component, then rebuilt as a flat XAR archive for modern macOS.
-
-### macOS says Packager is damaged, cannot be opened, or is from an unidentified developer
-
-Use the commands in the [Install](#install) section. The release is ad-hoc signed, not notarized.
-
-### Does Packager work without Xcode?
-
-The prebuilt app does. Building from source requires Xcode with the SwiftUI macro toolchain, as with most current SwiftUI apps; Command Line Tools alone are not enough.
-
-## Development
-
-Requirements:
-
-- macOS 14 or later
-- Xcode with the SwiftUI macro toolchain (tested with Xcode 27.1)
-
-Build the universal app:
-
-```bash
+```sh
 bash scripts/build.sh
+bash scripts/install.sh --no-build
 ```
 
-Install the local build to `/Applications` (the script only asks for administrator access if the copy needs it):
+The app is built at `dist/Packager.app` and installed at `/Applications/Packager.app`. Select an Intel target with `ARCH=x64 bash scripts/build.sh`, which requires the matching Electron runtime. This development round was validated on Apple Silicon.
 
-```bash
-bash scripts/install.sh
+Local builds use ad-hoc signing without Apple notarization. `bash scripts/package_release.sh` creates DMG, ZIP and SHA-256 files; it does not commit or push Git changes.
+
+## Development and tests
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
+npm ci --prefix desktop
+node scripts/prepare_electron.cjs
+npm run build --prefix desktop
+npm test --prefix desktop
+npm run test:browser --prefix desktop
 ```
 
-Build a universal release with DMG, ZIP, and SHA-256 checksums:
+GUI tests use actual Electron windows and Swift IPC. Set `PACKAGER_TEST_ORIGINAL`, `PACKAGER_TEST_FIXED` and `PACKAGER_TEST_LEGACY` to local fixtures to exercise real inspection, conversion, compatibility, Full mode and settings. Only native file-picker selections are substituted; package-processing results are real. Set `PACKAGER_TEST_APP` to the packaged app’s `Contents/MacOS/Packager` executable to test the production bundle.
 
-```bash
-bash scripts/package_release.sh
+```sh
+.build/backend/Packager --version
+.build/backend/Packager --inspect /path/to/input.pkg
+.build/backend/Packager --inspect /path/to/input.pkg --rebuild /path/to/output
 ```
 
-Release artifacts are written to `dist/`.
+`scripts/validate_packages.py` accepts `--original`, `--fixed`, `--legacy`, `--backend` and `--output`. It verifies unchanged inputs, preserved content, size repair, legacy conversion and readable Installer choices without installing software. Proprietary fixtures and generated packages are not committed.
 
-A small command-line inspection mode is available for development:
-
-```bash
-.build/release/Packager --inspect "/path/to/package.pkg"
-.build/release/Packager --inspect "/path/to/package.pkg" --rebuild /tmp/out --all
-```
-
-## Safety and privacy
-
-- No network access, telemetry, accounts, or uploads.
-- All unpacking and rebuilding happens inside `~/Library/Application Support/Packager/Workspace`.
-- The input package is opened read-only.
-- Administrator authorization is requested only when the selected output folder requires it, and only for the displayed copy command.
-- The app is ad-hoc signed. Verify the source or build it yourself if you need a stronger chain of trust.
-
-## Acknowledgements
-
-- Apple's `pkgutil`, `pkgbuild`, `productbuild`, Installer, and Mach-O formats.
-- SwiftUI and AppKit.
-- The onboarding/settings structure and install notes are inspired by [Seal](https://github.com/Dirty-Octopus/seal).
-- README layout is inspired by [Clash Verge Rev](https://github.com/clash-verge-rev/clash-verge-rev).
-
-Packager is not affiliated with Apple.
-
-## License
-
-MIT. See [LICENSE](./LICENSE).
+See [development notes](docs/DEVELOPMENT.md) and the [AYMDevKitUI provenance record](desktop/vendor/aym-devkit-ui/PROVENANCE.md).

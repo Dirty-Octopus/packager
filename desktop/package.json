@@ -1,0 +1,74 @@
+{
+  "name": "packager-desktop",
+  "productName": "Packager",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "main": "electron.cjs",
+  "author": "Andy Yu",
+  "description": "Local macOS installer workbench",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 1421 --strictPort",
+    "build": "vite build",
+    "test": "node --test tests/*.test.cjs",
+    "test:browser": "playwright test",
+    "desktop:build": "npm run build && electron-builder --mac dir --arm64"
+  },
+  "dependencies": {
+    "@aym-devkit/ui": "file:vendor/aym-devkit-ui",
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56",
+    "electron": "45.1.0",
+    "electron-builder": "^26",
+    "vite": "^7"
+  },
+  "build": {
+    "appId": "com.dirtyoctopus.packager",
+    "productName": "Packager",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron.cjs",
+      "preload.cjs",
+      "backend.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../.build/backend",
+        "to": "backend"
+      },
+      {
+        "from": "../LICENSE",
+        "to": "licenses/Packager.txt"
+      },
+      {
+        "from": "vendor/aym-devkit-ui/LICENSE",
+        "to": "licenses/AYMDevKitUI.txt"
+      },
+      {
+        "from": "licenses",
+        "to": "licenses/fonts"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "../.build/AppIcon.icns",
+      "identity": null,
+      "minimumSystemVersion": "14.0",
+      "extendInfo": {
+        "CFBundleShortVersionString": "1.1.0",
+        "CFBundleVersion": "3"
+      }
+    },
+    "electronDist": "node_modules/electron/dist"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

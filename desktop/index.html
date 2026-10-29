@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'self' ws://127.0.0.1:1421;"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Packager</title>
+  </head>
+  <body data-treatment="halftone">
+    <svg
+      class="filter-definitions"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <defs>
+        <filter
+          id="crt-lens"
+          x="0"
+          y="0"
+          width="100%"
+          height="100%"
+          color-interpolation-filters="sRGB"
+        >
+          <feFlood flood-color="rgb(128,128,0)" result="neutral" />
+          <feImage id="crt-map" preserveAspectRatio="none" result="lens-map" />
+          <feComposite
+            in="lens-map"
+            in2="neutral"
+            operator="over"
+            result="map"
+          />
+          <feDisplacementMap
+            id="crt-displacement"
+            in="SourceGraphic"
+            in2="map"
+            xChannelSelector="R"
+            yChannelSelector="G"
+            scale="0"
+            result="curved-page"
+          />
+          <feImage
+            id="crt-background"
+            x="0"
+            y="0"
+            width="140"
+            height="140"
+            preserveAspectRatio="none"
+            result="background-tile"
+          />
+          <feTile in="background-tile" result="background" />
+          <feMerge>
+            <feMergeNode in="background" />
+            <feMergeNode in="curved-page" />
+          </feMerge>
+        </filter>
+      </defs>
+    </svg>
+    <div class="native-drag"></div>
+    <div class="crt-surface">
+      <div id="site" class="shell" data-view="overview">
+        <header class="masthead">
+          <div class="wordmark brand-home">
+            <canvas
+              class="pixel-logo"
+              width="16"
+              height="16"
+              data-category="utility"
+            ></canvas
+            ><span>PACKAGER<small>MACOS INSTALLER WORKBENCH</small></span>
+          </div>
+          <div class="header-right header-tools">
+            <span class="status"><i></i> LOCAL / 1.1.0</span
+            ><button
+              id="system-open"
+              aria-label="打开设置"
+              aria-expanded="false"
+            >
+              <span data-icon>⚙</span
+              ><span data-zh="设置" data-en="SETTINGS">设置</span>
+            </button>
+          </div>
+        </header>
+        <div class="workspace-layout">
+          <aside>
+            <p class="eyebrow navigation-caption">
+              WORKSPACE <span>01—04</span>
+            </p>
+            <nav>
+              <button class="nav active" data-page="overview">
+                <span>01</span><b data-zh="快速模式" data-en="QUICK MODE">总览</b
+                ><small>ONE-CLICK CONVERSION</small></button
+              ><button class="nav" data-page="foundations">
+                <span>02</span
+                ><b data-zh="完整模式" data-en="FULL MODE">设计基础</b
+                ><small>INSPECT & REPACKAGE</small></button
+              ><button class="nav" data-page="components">
+                <span>03</span
+                ><b data-zh="活动记录" data-en="ACTIVITY">交互组件</b
+                ><small>COMMANDS & RESULTS</small></button
+              ><button class="nav" data-page="panels">
+                <span>04</span
+                ><b data-zh="关于" data-en="ABOUT">应用框架</b
+                ><small>LOCAL / OFFLINE</small>
+              </button>
+            </nav>
+            <div class="sidebar-foot">
+              <span data-zh="已打开的安装包" data-en="OPEN PACKAGES"></span><div id="package-list"></div><button class="add-package" data-action="open" data-zh="＋ 添加安装包" data-en="＋ ADD PACKAGE"></button>
+            </div>
+          </aside>
+          <main id="main" tabindex="-1">
+            <div class="module-surface">
+              <div class="module-wipe"></div>
+              <section data-view="overview">
+                <div class="hero quick-hero">
+                  <div class="hero-art" aria-hidden="true"><div class="package-diagram"><span>PKG</span><i>→</i><span>XAR</span></div></div>
+                  <p class="eyebrow">01 / QUICK MODE</p>
+                  <h1 class="hero-copy" data-zh="快速转换" data-en="QUICK CONVERSION">快速转换</h1>
+                  <p class="lead" data-zh="导入安装包，一键尝试重新封装。" data-en="Open an installer. Try repackaging in one step."></p>
+                  <div class="actions"><button class="primary" data-action="open" data-zh="打开安装包 ↗" data-en="OPEN PACKAGE ↗"></button><button data-goto="foundations" data-zh="使用完整模式" data-en="USE FULL MODE"></button></div>
+                </div>
+                <div class="quick-body">
+                  <div class="notice" role="note"><span class="notice-label" data-zh="可能失败" data-en="MAY FAIL"></span><p data-zh="快速模式会尝试修复可识别的限制和尺寸元数据，但转换可能失败，重建成功也不保证软件能运行。推荐使用完整模式，检查问题后再选择修复。" data-en="Quick mode attempts supported limit and size repairs. Conversion can fail, and a rebuilt package may still contain incompatible software. Full mode is recommended so you can review each change."></p></div>
+                  <div id="quick-drop" class="drop-zone" tabindex="0" role="button" aria-label="Open or drop an installer"><span class="drop-symbol">＋</span><strong data-zh="拖入 .pkg 或 .mpkg" data-en="DROP A .PKG OR .MPKG"></strong><span data-zh="或点击选择文件" data-en="OR CLICK TO CHOOSE"></span></div>
+                  <div id="quick-project" hidden></div>
+                  <div class="quick-output"><span data-zh="输出目录" data-en="OUTPUT FOLDER"></span><code id="quick-output-directory"></code><button data-action="directory" data-zh="更改" data-en="CHANGE"></button></div>
+                  <div class="quick-action"><p data-zh="保留安装脚本与二进制，不改动原文件。" data-en="Preserves install scripts, binaries and the original package."></p><button id="quick-convert" class="primary" disabled data-zh="一键尝试转换 ↗" data-en="TRY CONVERSION ↗"></button></div>
+                  <button id="quick-cancel" hidden data-zh="取消操作" data-en="CANCEL OPERATION"></button><div id="quick-result" aria-live="polite"></div>
+                </div>
+              </section>
+              <section data-view="foundations" hidden>
+                <div class="page-heading"><div><p class="eyebrow">02 / FULL MODE</p><h1 data-zh="检查与重新封装" data-en="INSPECT & REPACKAGE"></h1></div><button data-action="open" data-zh="打开安装包 ↗" data-en="OPEN PACKAGE ↗"></button></div>
+                <div id="full-empty" class="empty-state"><strong data-zh="尚未选择安装包" data-en="NO PACKAGE SELECTED"></strong><p data-zh="打开文件或从左侧选择已导入的安装包。" data-en="Open a file or select an imported package from the sidebar."></p></div>
+                <div id="full-workspace" hidden>
+                  <div id="project-heading"></div><div id="stats" class="stats-strip"></div>
+                  <div class="workbench">
+                    <div class="inspection-panel"><div id="compatibility-summary"></div><div class="inspection-tabs" role="tablist"><button id="structure-tab" role="tab" aria-selected="true" data-zh="结构" data-en="STRUCTURE"></button><button id="issues-tab" role="tab" aria-selected="false" data-zh="问题" data-en="ISSUES"></button></div>
+                      <div id="structure-panel" role="tabpanel"><div class="tree-tools"><input id="search" type="search" aria-label="Search package files" placeholder="搜索 / Search"/><select id="tree-filter" aria-label="Filter"><option value="all" data-zh="全部" data-en="ALL"></option><option value="binary" data-zh="二进制" data-en="BINARIES"></option><option value="script" data-zh="脚本" data-en="SCRIPTS"></option><option value="warning" data-zh="警告" data-en="WARNINGS"></option></select><button id="expand-all" data-zh="展开" data-en="EXPAND"></button><button id="collapse-all" data-zh="收起" data-en="COLLAPSE"></button></div><div id="tree" class="tree" role="tree"></div></div>
+                      <div id="issues-panel" role="tabpanel" hidden></div>
+                      <div id="file-preview" hidden><div class="preview-header"><code id="preview-title"></code><button id="close-preview" aria-label="Close preview">×</button></div><pre id="preview-text"></pre></div>
+                    </div>
+                    <div class="rebuild-panel"><p class="eyebrow" data-zh="修复选项" data-en="REBUILD OPTIONS"></p>
+                      <label class="option"><input id="fix-versionLimits" type="checkbox"/><span><strong data-zh="移除系统版本限制" data-en="REMOVE OS VERSION GATES"></strong><small data-zh="XML 与可独立识别的 JavaScript 检查" data-en="XML and isolated JavaScript version checks"></small></span></label>
+                      <label class="option"><input id="fix-relocatable" type="checkbox"/><span><strong data-zh="清除重定位标记" data-en="CLEAR RELOCATION FLAGS"></strong><small data-zh="使用组件声明的安装位置" data-en="Use the declared component install location"></small></span></label>
+                      <label class="option"><input id="fix-installSizes" type="checkbox"/><span><strong data-zh="修复 0 KB 安装尺寸" data-en="REPAIR ZERO INSTALL SIZES"></strong><small data-zh="按实际内容补全尺寸元数据" data-en="Measure content and update Distribution estimates"></small></span></label>
+                      <label class="option dangerous"><input id="fix-scripts" type="checkbox"/><span><strong data-zh="剥离高风险脚本" data-en="STRIP HIGH-RISK SCRIPTS"></strong><small data-zh="可能导致组件没有安装；需自行检查" data-en="May prevent components from installing; review first"></small></span></label>
+                      <label class="field"><span data-zh="输出名称" data-en="OUTPUT NAME"></span><input id="output-name" autocomplete="off"/></label>
+                      <div class="output-folder"><span data-zh="输出目录" data-en="OUTPUT FOLDER"></span><code id="output-directory"></code><button data-action="directory" data-zh="选择目录" data-en="CHOOSE FOLDER"></button></div>
+                      <button id="full-rebuild" class="primary wide" data-zh="重新封装 ↗" data-en="REPACKAGE ↗" disabled></button><button id="cancel" class="wide" hidden data-zh="取消操作" data-en="CANCEL OPERATION"></button><div id="full-result" aria-live="polite"></div>
+                      <p class="footnote" data-zh="输出包不保留原签名。验证范围为归档结构和 Installer 可读性。" data-en="Output packages do not retain the original signature. Verification covers archive structure and Installer readability."></p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <section data-view="components" hidden>
+                <div class="page-heading"><div><p class="eyebrow">03 / ACTIVITY</p><h1 data-zh="活动记录" data-en="ACTIVITY LOG"></h1></div><button id="clear-log" data-zh="清空显示" data-en="CLEAR DISPLAY"></button></div>
+                <p class="muted" data-zh="显示当前安装包的检查、转换与验证记录。" data-en="Inspection, conversion and verification events for the selected package."></p><pre id="activity-log" class="activity-log" aria-live="polite"></pre>
+              </section>
+              <section data-view="panels" hidden>
+                <div class="page-heading"><div><p class="eyebrow">04 / ABOUT</p><h1>PACKAGER</h1></div><span class="version-label">1.1.0</span></div>
+                <div class="panel"><h2 data-zh="本地安装包工作台" data-en="LOCAL INSTALLER WORKBENCH"></h2><p data-zh="检查旧版 macOS 安装包，按需修改后重新封装。原文件保留，安装脚本不会在检查过程中执行。" data-en="Inspect legacy macOS installers, review changes and repackage. Original files are preserved. Install scripts never run during inspection."></p></div>
+                <div class="panel"><h2 data-zh="能力与限制" data-en="CAPABILITIES & LIMITS"></h2><p data-zh="可移除支持的系统版本限制、修复尺寸、转换旧式 Bundle。无法补上 64 位代码，也无法保证旧插件在当前系统或宿主中运行。混合硬件与版本的 JavaScript 检查会保留并提示人工复核。" data-en="Removes supported OS limits, repairs size metadata and converts legacy bundles. It cannot generate 64-bit code or guarantee old plug-ins will run. Mixed hardware and version JavaScript checks remain for manual review."></p></div>
+                <div class="panel"><h2>AYMDEVKITUI / UTILITY BLUE</h2><p>AYMDevKitUI · ad8f98b · MIT</p><p data-zh="本地处理，无遥测、无上传。" data-en="Local processing. No telemetry or uploads."></p><div class="actions"><button id="replay" data-zh="查看欢迎界面" data-en="SHOW WELCOME"></button><button id="replay-panel" hidden></button></div></div>
+              </section>
+            </div>
+          </main>
+        </div>
+        <footer>
+          <span>PACKAGER / MACOS</span><span id="footer-status">READY</span
+          ><span>UTILITY / BLUE</span>
+        </footer>
+      </div>
+      <div id="welcome">
+        <div class="boot-face">
+          <canvas id="ascii" class="boot-grid"></canvas>
+          <div class="welcome-content portal-copy">
+            <canvas
+              class="pixel-logo boot-symbol"
+              width="16"
+              height="16"
+              data-category="utility"
+            ></canvas>
+            <p class="eyebrow">LOCAL INSTALLER WORKBENCH</p>
+            <h1>PACKAGER<br /><em>1.1.0</em></h1>
+            <p
+              data-zh="检查、修复并重新封装 macOS 安装包。"
+              data-en="Inspect, repair and repackage macOS installers."
+            ></p>
+            <button
+              class="primary"
+              id="start"
+              class="primary portal-controls"
+              data-zh="开始使用 ↗"
+              data-en="GET STARTED ↗"
+            ></button
+            ><span class="welcome-meta">UTILITY / #164BFF</span>
+          </div>
+          <div class="portal-visual" aria-hidden="true">
+            <svg
+              class="banner-strata"
+              viewBox="0 0 1200 300"
+              preserveAspectRatio="xMidYMid slice"
+            >
+              <path class="strata-base" d="M0 0H1200V300H0Z" />
+              <g class="strata-far">
+                <path d="M520 0H1200V300H750L630 180H440L560 60Z" />
+                <path d="M810 0H880L640 300H570Z" />
+              </g>
+              <g class="strata-mid">
+                <path d="M930 0H1200V300H680L790 190H930L1050 70H860Z" />
+                <path d="M620 0H645L410 300H385Z" />
+              </g>
+              <g class="strata-front">
+                <path d="M1120 0H1200V300H940L830 190H1020L1090 120H1000Z" />
+                <path d="M770 246H975L1029 300H716Z" />
+              </g>
+              <path
+                class="strata-line"
+                d="M600 20H915L1015 120H1180M490 280H660L790 150H920M745 238H992L1034 280H1180"
+              />
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="system-backdrop" hidden></div>
+      <dialog
+        id="system-dialog"
+        class="system-dialog"
+        aria-labelledby="settings-heading"
+      >
+        <div class="system-emblem"></div>
+        <div class="system-content">
+          <div class="system-titlebar">
+            <h2
+              id="settings-heading"
+              data-zh="界面控制"
+              data-en="INTERFACE CONTROL"
+            ></h2>
+            <button id="system-close" aria-label="关闭设置">×</button>
+          </div>
+          <p class="system-description">PACKAGER / PREFERENCES</p>
+          <div class="system-section">
+            <h3 data-zh="显示处理" data-en="DISPLAY TREATMENT"></h3>
+            <div class="treatments">
+              <button
+                data-treatment="classic"
+                data-zh="经典蓝"
+                data-en="CLASSIC"
+              ></button
+              ><button
+                data-treatment="halftone"
+                data-zh="高对比"
+                data-en="CONTRAST"
+              ></button
+              ><button
+                data-treatment="mono"
+                data-zh="灰阶"
+                data-en="MONO"
+              ></button>
+            </div>
+          </div>
+          <div class="system-section">
+            <h3 data-zh="外观模式" data-en="APPEARANCE"></h3>
+            <div class="appearance-options">
+              <button
+                data-appearance-choice="system"
+                data-zh="跟随系统"
+                data-en="SYSTEM"
+              ></button
+              ><button
+                data-appearance-choice="light"
+                data-zh="浅色"
+                data-en="LIGHT"
+              ></button
+              ><button
+                data-appearance-choice="dark"
+                data-zh="深色"
+                data-en="DARK"
+              ></button>
+            </div>
+          </div>
+          <div class="system-section switches">
+            <label
+              ><span data-zh="界面动效" data-en="INTERFACE MOTION"></span
+              ><button id="motion-toggle" role="switch"></button></label
+            ><label
+              ><span data-zh="交互音效" data-en="INTERFACE SOUND"></span
+              ><button id="sound-toggle" role="switch"></button></label
+            ><label
+              ><span>CRT <small>EXPERIMENTAL</small></span
+              ><button id="crt-toggle" role="switch"></button
+            ></label>
+          </div>
+          <div class="system-section">
+            <label class="range-label"
+              ><span data-zh="屏幕柔化" data-en="SCREEN SOFTNESS"></span
+              ><output id="softness-value">0.20</output
+              ><input
+                id="softness"
+                type="range"
+                min="0"
+                max="0.8"
+                step="0.05"
+                value="0.2"
+            /></label>
+          </div>
+          <div class="system-section">
+            <h3>LANGUAGE / 语言</h3>
+            <div class="actions">
+              <button data-language="zh">简体中文</button
+              ><button data-language="en">ENGLISH</button>
+            </div>
+          </div>
+          <div class="system-section">
+            <button
+              id="reset"
+              class="wide"
+              data-zh="重置全部设置 ↺"
+              data-en="RESET ALL SETTINGS ↺"
+            ></button>
+          </div>
+        </div>
+      </dialog>
+      <div class="screen-bloom"></div>
+      <div class="screen-patina"><canvas id="screen-noise"></canvas></div>
+      <div class="scroll-ruler" aria-hidden="true"><i></i></div>
+    </div>
+    <div id="error" hidden role="alert"></div>
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>

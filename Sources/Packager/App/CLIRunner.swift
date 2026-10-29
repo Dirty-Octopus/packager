@@ -5,7 +5,7 @@ enum CLIRunner {
     static func runIfRequested() -> Bool {
         let arguments = CommandLine.arguments
         if arguments.contains("--version") {
-            print("Packager 1.0")
+            print("Packager \(AppVersion.current)")
             exit(0)
         }
         guard let inspectIndex = arguments.firstIndex(of: "--inspect") else { return false }
@@ -76,10 +76,15 @@ enum CLIRunner {
         print("duration:    \(Fmt.duration(inspection.duration))")
         print("components:  \(inspection.stats.components)")
         print("payload:     \(Fmt.count(inspection.stats.payloadFiles)) files, \(Fmt.size(inspection.stats.payloadBytes))")
-        print("binaries:    \(inspection.stats.binaries) (\(inspection.stats.bit32Binaries) 32-bit)")
+        print("binaries:    \(inspection.stats.binaries) (\(inspection.stats.bit32Binaries) with legacy slices)")
         print("scripts:     \(inspection.stats.scripts) (\(inspection.stats.highRiskScripts) high risk)")
         print("relocatable: \(inspection.stats.relocatableComponents)")
         print("os limits:   \(inspection.stats.osConstraints)")
+
+        print("\nTHIS MAC / ARCHITECTURE ASSESSMENT")
+        if let host = inspection.compatibility["host"] as? [String: Any] { print("  host: \(host)") }
+        print("  runtime: \(inspection.compatibility["runtime"] as? String ?? "unknown")")
+        print("  Installation has not been tested. Architecture alone does not guarantee runtime.")
 
         print("\nSTRUCTURE")
         printTree(inspection.root, depth: 0)

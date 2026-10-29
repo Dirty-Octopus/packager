@@ -1,25 +1,26 @@
 #!/bin/bash
 set -euo pipefail
-
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+[[ "${1:-}" == "--no-build" ]] || bash "$ROOT/scripts/build.sh"
 APP="$ROOT/dist/Packager.app"
 DEST="/Applications/Packager.app"
-
-bash "$ROOT/scripts/build.sh"
-
-echo "▸ Installing to $DEST"
+codesign --verify --deep --strict "$APP"
 if [[ -w /Applications ]]; then
-    rm -rf "$DEST"
-    ditto "$APP" "$DEST"
+  if [[ -e "$DEST" ]]; then
+    BACKUP_DIR="$ROOT/.build/installed-backups"
+    mkdir -p "$BACKUP_DIR"
+    mv "$DEST" "$BACKUP_DIR/Packager-$(date +%Y%m%d-%H%M%S)-$$.app"
+  fi
+  ditto "$APP" "$DEST"
 else
-    echo "  /Applications needs administrator access — macOS will ask for your password."
-    osascript - "$APP" <<'APPLESCRIPT'
+  osascript - "$APP" "$ROOT/.build/installed-backups" <<'APPLESCRIPT'
 on run argv
-    set src to quoted form of (item 1 of argv)
-    do shell script "rm -rf /Applications/Packager.app && ditto " & src & " /Applications/Packager.app" with administrator privileges
+  set backupRoot to quoted form of (item 2 of argv)
+  set backupPath to quoted form of ((item 2 of argv) & "/Packager-" & (do shell script "date +%Y%m%d-%H%M%S") & ".app")
+  do shell script "mkdir -p " & backupRoot & " && if [ -e /Applications/Packager.app ]; then mv /Applications/Packager.app " & backupPath & "; fi && ditto " & quoted form of (item 1 of argv) & " /Applications/Packager.app" with administrator privileges
 end run
 APPLESCRIPT
 fi
-
+codesign --verify --deep --strict "$DEST"
 open "$DEST"
-echo "✓ Installed $DEST"
+echo "Installed $DEST"
