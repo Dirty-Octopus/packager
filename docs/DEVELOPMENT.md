@@ -1,4 +1,4 @@
-# Packager 1.1.0 — development and validation
+# Packager 1.1.1 — development and validation
 
 ## Architecture
 
@@ -62,7 +62,7 @@ After installation to `/Applications/Packager.app`, the native macOS picker was
 also used to open the original legacy MPKG. The installed app entered Quick mode,
 completed the scan and visibly reported i386 / Intel 32-bit as incompatible with
 this Mac. Installed and built app archives match, and strict signature verification
-passes. The installed helper reports the same 1.1.0 version and passes the three
+passes. The installed helper reports the same 1.1.1 version and passes the three
 fixture rebuild checks.
 
 Automated coverage:
@@ -77,9 +77,12 @@ Automated coverage:
   pointer mapping with CRT enabled.
 
 The GUI tests substitute file-picker selections, not backend processing. Screenshots
-are captured from actual Electron windows. The local build target is Apple Silicon;
-the helper is universal and its deployment minimum is verified from its Mach-O
-load commands. Intel-target app packaging is available but not exercised here.
+are captured from actual Electron windows. The six GUI cases pass for both the
+arm64 production app and the x64 production app running through Rosetta on Apple
+Silicon. Physical Intel hardware was not tested. The helper is universal and its
+deployment minimum is verified from its Mach-O load commands. Rosetta rendering
+can exceed Playwright’s default five-second assertion timeout, so the GUI harness
+uses a fifteen-second budget and brings its window to the front.
 
 Generated artifacts, package samples, session workspaces and dependency caches
 are ignored. AYMDevKitUI's MIT notice and both font OFL notices are included in the
@@ -110,3 +113,11 @@ matrices and content clip paths, reduced-motion entry, and the existing package
 workflow. The icon foreground bounds match Seal's `(272, 272, 752, 752)` at 1024 px.
 GUI validation uses an isolated temporary Electron profile, separate from actual
 application appearance and language preferences.
+
+## 1.1.1 release artifacts
+
+Separate arm64 and x64 DMG/ZIP archives were built. All four SHA-256 checksums
+match. Both ZIPs extract successfully, and both DMGs mount read-only with the app
+and an Applications link. Each extracted/mounted app passes strict deep signature
+verification, has the expected main-executable architecture and reports helper
+version 1.1.1. Signing is ad-hoc; Apple notarization is not included.

@@ -8,6 +8,17 @@ The current source version is **1.1.1**. The interface uses the active Electron 
 
 ![Quick mode](docs/quick-mode.png)
 
+## Download and install
+
+Requires macOS 14 or later. Download **Packager 1.1.1** from [Releases](https://github.com/Dirty-Octopus/packager/releases/tag/v1.1.1). Prebuilt apps do not require Xcode or Node.js.
+
+| Mac | DMG | ZIP |
+| --- | --- | --- |
+| Apple Silicon (M series) | [arm64 DMG](https://github.com/Dirty-Octopus/packager/releases/download/v1.1.1/Packager-1.1.1-macos-arm64.dmg) | [arm64 ZIP](https://github.com/Dirty-Octopus/packager/releases/download/v1.1.1/Packager-1.1.1-macos-arm64.zip) |
+| Intel | [x64 DMG](https://github.com/Dirty-Octopus/packager/releases/download/v1.1.1/Packager-1.1.1-macos-x64.dmg) | [x64 ZIP](https://github.com/Dirty-Octopus/packager/releases/download/v1.1.1/Packager-1.1.1-macos-x64.zip) |
+
+Open the DMG and drag `Packager.app` into Applications, or extract the ZIP and move the app there. Releases use ad-hoc signing and are not notarized. If macOS blocks the first launch, follow its **Privacy & Security → Open Anyway** flow after checking the source and [SHA-256 checksums](https://github.com/Dirty-Octopus/packager/releases/download/v1.1.1/SHA256SUMS.txt).
+
 ## Quick mode
 
 Startup automatically plays the kit’s 2.5-second assembly with panel wipes and a non-uniform morph, then opens Quick mode. Disabling interface motion or enabling system Reduce Motion enters immediately. Import a package and choose **Try conversion** to apply supported OS-limit, relocation and zero-size metadata repairs, and convert supported legacy bundles into flat XAR packages. Install scripts, binaries and source packages are preserved. Existing output files are never overwritten.
@@ -57,9 +68,9 @@ bash scripts/build.sh
 bash scripts/install.sh --no-build
 ```
 
-The app is built at `dist/Packager.app` and installed at `/Applications/Packager.app`. Select an Intel target with `ARCH=x64 bash scripts/build.sh`, which requires the matching Electron runtime. This development round was validated on Apple Silicon.
+The app is built at `dist/Packager.app` and installed at `/Applications/Packager.app`. Select an Intel target with `ARCH=x64 bash scripts/build.sh`, which requires the matching Electron runtime. The release provides separate arm64 and x64 apps; the Swift helper remains universal.
 
-Local builds use ad-hoc signing without Apple notarization. `bash scripts/package_release.sh` creates DMG, ZIP and SHA-256 files; it does not commit or push Git changes.
+Local builds use ad-hoc signing without Apple notarization. `bash scripts/package_release.sh` builds and creates architecture-labeled DMG, ZIP and SHA-256 files; use `ARCH=x64` for Intel. Pass `--no-build` to package an already verified app of the selected architecture. The script checks app version, architecture and signing before packaging, and does not commit or push Git changes.
 
 ## Development and tests
 

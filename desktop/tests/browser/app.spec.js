@@ -35,8 +35,20 @@ test.beforeAll(async () => {
     requestAnimationFrame(record);
   });
   await page.reload();
+  await page.bringToFront();
 });
 test.afterAll(async () => { await app?.close(); if (profile) await fs.rm(profile, { recursive: true, force: true }); });
+
+test.afterEach(async ({}, info) => {
+  if (info.status !== info.expectedStatus && page) {
+    console.log("Renderer errors:", errors);
+    console.log("Startup diagnostics:", await page.evaluate(() => ({
+      visibility: document.visibilityState, body: document.body.className,
+      assembling: document.querySelector("#site")?.dataset.assembling,
+      frames: window.entryFrames?.length, error: document.querySelector("#error")?.textContent,
+    })).catch(() => null));
+  }
+});
 
 async function select(file) {
   await app.evaluate(({ dialog }, selected) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [selected] }); }, file);

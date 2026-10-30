@@ -8,6 +8,17 @@
 
 ![快速模式](docs/quick-mode.png)
 
+## 下载与安装
+
+需要 macOS 14 或更高版本。从 [Releases](https://github.com/Dirty-Octopus/packager/releases/tag/v1.1.1) 下载 **Packager 1.1.1**。预编译 App 无需 Xcode 或 Node.js。
+
+| 电脑 | DMG | ZIP |
+| --- | --- | --- |
+| Apple Silicon（M 系列） | [arm64 DMG](https://github.com/Dirty-Octopus/packager/releases/download/v1.1.1/Packager-1.1.1-macos-arm64.dmg) | [arm64 ZIP](https://github.com/Dirty-Octopus/packager/releases/download/v1.1.1/Packager-1.1.1-macos-arm64.zip) |
+| Intel | [x64 DMG](https://github.com/Dirty-Octopus/packager/releases/download/v1.1.1/Packager-1.1.1-macos-x64.dmg) | [x64 ZIP](https://github.com/Dirty-Octopus/packager/releases/download/v1.1.1/Packager-1.1.1-macos-x64.zip) |
+
+打开 DMG，将 `Packager.app` 拖入 Applications；也可以解压 ZIP 后移动 App。Release 使用 ad-hoc 签名，未经 Apple 公证。若首次启动被 macOS 阻止，请核对源码与 [SHA-256 校验和](https://github.com/Dirty-Octopus/packager/releases/download/v1.1.1/SHA256SUMS.txt)，再通过系统的「隐私与安全性 → 仍要打开」流程允许启动。
+
 ## 快速模式
 
 启动时自动播放库原生的 2.5 秒构造入场，包含面板划入与非等比变形，之后进入快速模式。关闭界面动效或启用系统减少动态效果时直接进入。导入安装包后，点击「一键尝试转换」：
@@ -68,9 +79,9 @@ bash scripts/build.sh
 bash scripts/install.sh --no-build
 ```
 
-App 位于 `dist/Packager.app`，安装到 `/Applications/Packager.app`。`ARCH=x64 bash scripts/build.sh` 可选择 Intel 目标，需取得对应的 Electron 运行时；此轮本地验收使用 Apple Silicon 目标。
+App 位于 `dist/Packager.app`，安装到 `/Applications/Packager.app`。`ARCH=x64 bash scripts/build.sh` 可选择 Intel 目标，需取得对应的 Electron 运行时；Release 分别提供 arm64 和 x64 App；Swift 辅助程序仍包含两种架构。
 
-产物采用 ad-hoc 签名，未经 Apple 公证。需要发布归档时运行 `bash scripts/package_release.sh`，生成 DMG、ZIP 和 SHA-256；该脚本不会提交或推送 Git。
+产物采用 ad-hoc 签名，未经 Apple 公证。需要发布归档时运行 `bash scripts/package_release.sh`，生成标明架构的 DMG、ZIP 和 SHA-256；Intel 目标使用 `ARCH=x64`。传入 `--no-build` 可打包已验证、架构相符的 App。脚本会核对版本、架构与签名，不会提交或推送 Git。
 
 ## 开发与测试
 
